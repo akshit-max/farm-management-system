@@ -1,11 +1,15 @@
 # Development Log
 
 ## Phase 0: Foundation
-- Project initialized with Next.js 15, Tailwind, TypeScript.
-- Configured PostgreSQL + Prisma.
-- Created base database schema with UUIDs and soft delete functionality.
-- Implemented Auth.js v5 with Credentials and JWT.
-- Added Role-Based Access Control (RBAC) middleware for restricted routes.
-- Created YNEX dashboard shell layout (Sidebar, Navbar).
-- Created Settings module shell.
-- Integrated `next-pwa` for PWA installability.
+- Project initialized.
+- Auth.js v5 setup.
+- YNEX dashboard layout constructed.
+- Next-PWA setup.
+
+## Phase 0: Required Fixes
+- Fixed Prisma 7 incompatibility by downgrading to Prisma 6 to strictly support `url = env("DATABASE_URL")` in `schema.prisma`.
+- Connected `User` to `Farm` for Multi-Farm architecture via `farm_id`.
+- Created `prisma/seed.ts` for dummy data and owner setup.
+- Generated precise 192x192 and 512x512 PNG assets in `public/` for accurate PWA installability.
+- Added `src/lib/rbac.ts` with Next-Auth session helpers for unified role validation.
+- Validated Production Build for Service Worker generation.

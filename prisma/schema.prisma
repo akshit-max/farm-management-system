@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Role {
@@ -44,6 +45,10 @@ model User {
   password_hash String
   role_id       String     @db.Uuid
   role          Role       @relation(fields: [role_id], references: [id])
+  
+  farm_id       String?    @db.Uuid
+  farm          Farm?      @relation(fields: [farm_id], references: [id])
+  
   active_status Boolean    @default(true)
 
   audit_logs    AuditLog[]
@@ -64,6 +69,7 @@ model Farm {
   location      String?
   active_status Boolean    @default(true)
 
+  users         User[]
   settings      Settings?
 
   created_at    DateTime   @default(now())

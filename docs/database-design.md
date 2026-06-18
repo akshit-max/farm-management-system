@@ -2,24 +2,21 @@
 
 ## Database Strategy
 - PostgreSQL (via Neon)
-- ORM: Prisma
+- ORM: Prisma v6.0.0
 - IDs: UUID strings for all primary keys
-- Naming convention: `snake_case` table names and fields
-- Deletions: Soft delete ONLY (`deleted_at` field)
-
-## Standard Fields
-All business tables contain:
-- `id` (UUID)
-- `created_at` (DateTime)
-- `updated_at` (DateTime)
-- `deleted_at` (DateTime?)
-- `last_modified` (DateTime)
-- `sync_status` (String: PENDING/SYNCED)
+- Naming convention: `snake_case` table names
+- Soft delete: Supported via `deleted_at`
 
 ## Phase 0 Models
 - **Role**: `Owner`, `Manager`, `Accountant`, `Worker`
-- **Permission**: Granular access rights
-- **User**: Name, Email, Password Hash, Role, Active Status
-- **Farm**: Name, Description, Location, Active Status
-- **Settings**: Theme, Currency, Date Format (linked to Farm)
-- **AuditLog**: User, Action, Entity, Entity ID, Timestamp
+- **User**: Connects strictly to a single `Farm` via `farm_id` representing ownership/operation link.
+- **Farm**: Has Many `Users`. Includes physical farm entities.
+- **Settings**: Linked 1-to-1 with `Farm`.
+- **AuditLog**: Activity tracking.
+
+## Seeding Strategy
+- Located in `prisma/seed.ts`.
+- Automatically generates Base Roles.
+- Automatically generates "Main Farm" and its Default Settings.
+- Generates "admin@farmerp.com" Owner account associated with Main Farm.
+- Passwords hashed via `bcryptjs`.
