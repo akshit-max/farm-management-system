@@ -11,7 +11,7 @@ const schema = z.object({
   capacity: z.coerce.number().min(1, "Capacity must be > 0"),
 });
 
-export function RoomForm({ farmId, onSuccess }: { farmId: string; onSuccess: () => void }) {
+export function RoomForm({ farmId, onSuccess, initialData, onCancel }: { farmId: string; onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [stages, setStages] = useState<any[]>([]);
   const [selectedStages, setSelectedStages] = useState<string[]>([]);
@@ -27,6 +27,19 @@ export function RoomForm({ farmId, onSuccess }: { farmId: string; onSuccess: () 
       .then(data => setStages(data.data || []));
   }, [farmId]);
 
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        name: initialData.name || "",
+        capacity: initialData.capacity || 100,
+      });
+      setSelectedStages(initialData.allowed_stages || []);
+    } else {
+      reset({ name: "", capacity: 100 });
+      setSelectedStages([]);
+    }
+  }, [initialData, reset]);
+
   const toggleStage = (stageId: string) => {
     setSelectedStages(prev => prev.includes(stageId) ? prev.filter(id => id !== stageId) : [...prev, stageId]);
   };
@@ -38,13 +51,16 @@ export function RoomForm({ farmId, onSuccess }: { farmId: string; onSuccess: () 
     }
     setIsLoading(true);
     try {
-      const res = await fetch("/api/rooms", {
-        method: "POST",
+      const url = initialData ? `/api/rooms/${initialData.id}` : "/api/rooms";
+      const method = initialData ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, farm_id: farmId, allowed_stages: selectedStages.join(",") }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
-      toast.success("Room saved!");
+      toast.success(initialData ? "Room updated!" : "Room saved!");
       reset();
       setSelectedStages([]);
       onSuccess();
@@ -57,21 +73,21 @@ export function RoomForm({ farmId, onSuccess }: { farmId: string; onSuccess: () 
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
-      <h2 className="text-lg font-semibold text-gray-800">Add New Room</h2>
+      <h2 className="text-lg font-semibold text-gray-800">{initialData ? "Edit Room" : "Add New Room"}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Room Name</label>
-          <input {...register("name")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" placeholder="Barn A" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Room Name <span className="text-red-500">*</span></label>
+          <input required {...register("name")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" placeholder="Barn A" />
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message as string}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (Max Animals)</label>
-          <input type="number" {...register("capacity")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (Max Animals) <span className="text-red-500">*</span></label>
+          <input required type="number" {...register("capacity")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" />
           {errors.capacity && <p className="text-red-500 text-xs mt-1">{errors.capacity.message as string}</p>}
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Allowed Stages</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Allowed Stages <span className="text-red-500">*</span></label>
         <div className="flex flex-wrap gap-2">
           {stages.map(stage => (
             <button
@@ -90,9 +106,14 @@ export function RoomForm({ farmId, onSuccess }: { farmId: string; onSuccess: () 
           {stages.length === 0 && <span className="text-sm text-gray-500">No stages found. Create stages first.</span>}
         </div>
       </div>
-      <div className="flex justify-end mt-4">
+      <div className="flex justify-end gap-3 mt-4">
+        {initialData && (
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+            Cancel
+          </button>
+        )}
         <button type="submit" disabled={isLoading} className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50">
-          {isLoading ? "Saving..." : "Save Room"}
+          {isLoading ? "Saving..." : (initialData ? "Update Room" : "Save Room")}
         </button>
       </div>
     </form>

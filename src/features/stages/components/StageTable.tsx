@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 
 const columnHelper = createColumnHelper<any>();
 
-export function StageTable({ farmId, keyIndex }: { farmId: string; keyIndex: number }) {
+export function StageTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIndex: number; onEdit?: (stage: any) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchStages = async () => {
     setLoading(true);
@@ -25,15 +28,18 @@ export function StageTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
     fetchStages();
   }, [farmId, keyIndex]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
-    const res = await fetch(`/api/stages/${id}`, { method: "DELETE" });
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    const res = await fetch(`/api/stages/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Deleted successfully");
       fetchStages();
     } else {
       toast.error("Failed to delete");
     }
+    setIsDeleting(false);
+    setDeleteId(null);
   };
 
   const columns = [
@@ -46,9 +52,14 @@ export function StageTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
       id: "actions",
       header: "Actions",
       cell: (info) => (
-        <button onClick={() => handleDelete(info.row.original.id)} className="text-red-500 hover:text-red-700 p-1">
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => onEdit?.(info.row.original)} className="p-1.5 text-gray-400 hover:text-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary)]/10 rounded-md transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button onClick={() => setDeleteId(info.row.original.id)} className="text-red-500 hover:text-red-700 p-1.5 transition-colors hover:bg-red-50 rounded-md">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       ),
     }),
   ];
@@ -77,7 +88,7 @@ export function StageTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
               </tr>
             ))}
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-100">
             {table.getRowModel().rows.map(row => (
               <tr key={row.id}>
                 {row.getVisibleCells().map(cell => (
@@ -93,10 +104,19 @@ export function StageTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
           </tbody>
         </table>
       </div>
-      <div className="px-6 py-3 border-t flex items-center justify-between">
-        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="text-sm text-emerald-600 disabled:opacity-50">Previous</button>
-        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="text-sm text-emerald-600 disabled:opacity-50">Next</button>
+      <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="text-sm text-[var(--color-brand-primary)] disabled:opacity-50 font-medium">Previous</button>
+        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="text-sm text-[var(--color-brand-primary)] disabled:opacity-50 font-medium">Next</button>
       </div>
+
+      <ConfirmModal
+        isOpen={!!deleteId}
+        title="Delete Stage"
+        message="Are you sure you want to delete this stage? This action cannot be undone."
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

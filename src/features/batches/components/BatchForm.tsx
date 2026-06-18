@@ -20,7 +20,7 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-export function BatchForm({ farmId, onSuccess }: { farmId: string; onSuccess: () => void }) {
+export function BatchForm({ farmId, onSuccess, initialData, onCancel }: { farmId: string; onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -43,19 +43,45 @@ export function BatchForm({ farmId, onSuccess }: { farmId: string; onSuccess: ()
     fetch(`/api/stages?farmId=${farmId}`).then(r => r.json()).then(d => setStages(d.data || []));
   }, [farmId]);
 
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        batch_number: initialData.batch_number || "",
+        animal_category_id: initialData.animal_category_id || "",
+        room_id: initialData.room_id || "",
+        current_stage_id: initialData.current_stage_id || "",
+        arrival_date: initialData.arrival_date ? new Date(initialData.arrival_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        quantity: initialData.quantity || 0,
+        initial_weight: initialData.initial_weight || 0,
+        average_weight: initialData.average_weight || 0,
+        cost_per_animal: initialData.cost_per_animal || 0,
+        notes: initialData.notes || ""
+      });
+    } else {
+      reset({
+        batch_number: "", animal_category_id: "", room_id: "", current_stage_id: "",
+        arrival_date: new Date().toISOString().split("T")[0],
+        quantity: 0, initial_weight: 0, average_weight: 0, cost_per_animal: 0, notes: ""
+      });
+    }
+  }, [initialData, reset]);
+
   const filteredStages = stages.filter(s => s.animal_category_id === selectedCategory);
 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
+      const url = initialData ? `/api/animal-batches/${initialData.id}` : "/api/animal-batches";
+      const method = initialData ? "PUT" : "POST";
+      
       const payload = { ...data, farm_id: farmId, arrival_date: new Date(data.arrival_date).toISOString() };
-      const res = await fetch("/api/animal-batches", {
-        method: "POST",
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
-      toast.success("Batch created!");
+      toast.success(initialData ? "Batch updated!" : "Batch created!");
       reset();
       onSuccess();
     } catch (err: any) {
@@ -67,44 +93,44 @@ export function BatchForm({ farmId, onSuccess }: { farmId: string; onSuccess: ()
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
-      <h2 className="text-lg font-semibold text-gray-800">Create Animal Batch</h2>
+      <h2 className="text-lg font-semibold text-gray-800">{initialData ? "Edit Animal Batch" : "Create Animal Batch"}</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
-          <input {...register("batch_number")} className="w-full px-3 py-2 border rounded-md" placeholder="B-2026-001" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number <span className="text-red-500">*</span></label>
+          <input required {...register("batch_number")} className="w-full px-3 py-2 border rounded-md" placeholder="B-2026-001" />
           {errors.batch_number && <p className="text-red-500 text-xs mt-1">{errors.batch_number.message as string}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-          <select {...register("animal_category_id")} className="w-full px-3 py-2 border rounded-md">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Category <span className="text-red-500">*</span></label>
+          <select required {...register("animal_category_id")} className="w-full px-3 py-2 border rounded-md">
             <option value="">Select...</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           {errors.animal_category_id && <p className="text-red-500 text-xs mt-1">{errors.animal_category_id.message as string}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Room</label>
-          <select {...register("room_id")} className="w-full px-3 py-2 border rounded-md">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Room <span className="text-red-500">*</span></label>
+          <select required {...register("room_id")} className="w-full px-3 py-2 border rounded-md">
             <option value="">Select...</option>
             {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Cap: {r.capacity})</option>)}
           </select>
           {errors.room_id && <p className="text-red-500 text-xs mt-1">{errors.room_id.message as string}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Current Stage</label>
-          <select {...register("current_stage_id")} className="w-full px-3 py-2 border rounded-md" disabled={!selectedCategory}>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Current Stage <span className="text-red-500">*</span></label>
+          <select required {...register("current_stage_id")} className="w-full px-3 py-2 border rounded-md" disabled={!selectedCategory}>
             <option value="">Select...</option>
             {filteredStages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
           </select>
           {errors.current_stage_id && <p className="text-red-500 text-xs mt-1">{errors.current_stage_id.message as string}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Arrival Date</label>
-          <input type="date" {...register("arrival_date")} className="w-full px-3 py-2 border rounded-md" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Arrival Date <span className="text-red-500">*</span></label>
+          <input required type="date" {...register("arrival_date")} className="w-full px-3 py-2 border rounded-md" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-          <input type="number" {...register("quantity")} className="w-full px-3 py-2 border rounded-md" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Quantity <span className="text-red-500">*</span></label>
+          <input required type="number" {...register("quantity")} className="w-full px-3 py-2 border rounded-md" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Initial Weight (kg)</label>
@@ -123,9 +149,14 @@ export function BatchForm({ farmId, onSuccess }: { farmId: string; onSuccess: ()
         <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
         <textarea {...register("notes")} className="w-full px-3 py-2 border rounded-md" rows={2} />
       </div>
-      <div className="flex justify-end mt-4">
+      <div className="flex justify-end gap-3 mt-4">
+        {initialData && (
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+            Cancel
+          </button>
+        )}
         <button type="submit" disabled={isLoading} className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50">
-          {isLoading ? "Saving..." : "Create Batch"}
+          {isLoading ? "Saving..." : (initialData ? "Update Batch" : "Create Batch")}
         </button>
       </div>
     </form>

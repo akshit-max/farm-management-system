@@ -3,14 +3,17 @@
 import { useState, useEffect } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Trash2, Edit } from "lucide-react";
 import Link from "next/link";
+import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 
 const columnHelper = createColumnHelper<any>();
 
-export function BatchTable({ farmId, keyIndex }: { farmId: string; keyIndex: number }) {
+export function BatchTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIndex: number; onEdit?: (batch: any) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchBatches = async () => {
     setLoading(true);
@@ -26,15 +29,18 @@ export function BatchTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
     fetchBatches();
   }, [farmId, keyIndex]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
-    const res = await fetch(`/api/animal-batches/${id}`, { method: "DELETE" });
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    const res = await fetch(`/api/animal-batches/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Deleted successfully");
       fetchBatches();
     } else {
       toast.error("Failed to delete");
     }
+    setIsDeleting(false);
+    setDeleteId(null);
   };
 
   const columns = [
@@ -49,10 +55,13 @@ export function BatchTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
       header: "Actions",
       cell: (info) => (
         <div className="flex items-center gap-2">
-          <Link href={`/dashboard/animal-batches/${info.row.original.id}`} className="text-blue-500 hover:text-blue-700 p-1">
+          <Link href={`/dashboard/animal-batches/${info.row.original.id}`} className="text-blue-500 hover:text-blue-700 p-1.5 transition-colors hover:bg-blue-50 rounded-md">
             <Eye className="w-4 h-4" />
           </Link>
-          <button onClick={() => handleDelete(info.row.original.id)} className="text-red-500 hover:text-red-700 p-1">
+          <button onClick={() => onEdit?.(info.row.original)} className="p-1.5 text-gray-400 hover:text-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary)]/10 rounded-md transition-colors">
+            <Edit className="w-4 h-4" />
+          </button>
+          <button onClick={() => setDeleteId(info.row.original.id)} className="text-red-500 hover:text-red-700 p-1.5 transition-colors hover:bg-red-50 rounded-md">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -84,7 +93,7 @@ export function BatchTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
               </tr>
             ))}
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-100">
             {table.getRowModel().rows.map(row => (
               <tr key={row.id}>
                 {row.getVisibleCells().map(cell => (
@@ -100,6 +109,19 @@ export function BatchTable({ farmId, keyIndex }: { farmId: string; keyIndex: num
           </tbody>
         </table>
       </div>
+      <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="text-sm text-[var(--color-brand-primary)] disabled:opacity-50 font-medium">Previous</button>
+        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="text-sm text-[var(--color-brand-primary)] disabled:opacity-50 font-medium">Next</button>
+      </div>
+
+      <ConfirmModal
+        isOpen={!!deleteId}
+        title="Delete Batch"
+        message="Are you sure you want to delete this batch? This action cannot be undone."
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

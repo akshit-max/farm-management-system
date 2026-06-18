@@ -1,42 +1,70 @@
+"use client";
+
 import Link from 'next/link';
-import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Layers } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Hexagon, Layers, Plus } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { name: 'Categories', icon: Layers, href: '/dashboard/animal-categories' },
+  { name: 'Animals', icon: Users, href: '/dashboard/animal-categories' },
   { name: 'Stages', icon: Activity, href: '/dashboard/stages' },
-  { name: 'Rooms', icon: Grid, href: '/dashboard/rooms' },
-  { name: 'Batches (Livestock)', icon: Users, href: '/dashboard/animal-batches' },
+  { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms' },
+  { name: 'Batches', icon: Layers, href: '/dashboard/animal-batches' },
   { name: 'Feed Management', icon: FileText, href: '/dashboard/feed' },
   { name: 'Water Management', icon: Droplets, href: '/dashboard/water' },
   { name: 'Electricity Manager', icon: Zap, href: '/dashboard/electricity' },
-  { name: 'Settings', icon: Settings, href: '/settings' },
+  { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales' },
+  { name: 'Accounts', icon: BookOpen, href: '/dashboard/accounts' },
+  { name: 'CRM', icon: Users, href: '/dashboard/crm' },
+  { name: 'Reports & Analytics', icon: LineChart, href: '/dashboard/reports' },
+  { name: 'Settings', icon: Settings, href: '/dashboard/settings' },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isCollapsed = false }: { isCollapsed?: boolean }) {
+  const pathname = usePathname();
+
   return (
-    <aside className="w-64 bg-[#112a23] text-gray-300 flex flex-col h-full overflow-y-auto">
-      <div className="p-6 flex items-center gap-3">
-        <div className="bg-emerald-500 rounded p-1">
-          <Activity className="text-white w-6 h-6" />
+    <aside className={`bg-[var(--color-brand-sidebar)] text-gray-300 flex flex-col h-full overflow-y-auto transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[260px] hidden md:flex'}`}>
+      <div className={`h-[70px] px-6 flex items-center border-b border-[#0a3128] ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
+        <div className="bg-transparent rounded flex items-center justify-center shrink-0">
+          <Hexagon className="text-white w-7 h-7 stroke-[1.5]" />
         </div>
-        <span className="text-white text-2xl font-semibold tracking-wide">ynex</span>
+        {!isCollapsed && <span className="text-white text-xl font-bold tracking-wide whitespace-nowrap">YNEX ERP</span>}
       </div>
-      <nav className="flex-1 px-4 pb-4 space-y-1">
-        {menuItems.map((item) => (
-          <Link
-            key={item.name}
-            href={item.href}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-[#1a3a31] hover:text-white transition-colors group text-sm font-medium"
-          >
-            <item.icon className="w-5 h-5 opacity-70 group-hover:opacity-100" />
-            {item.name}
-          </Link>
-        ))}
+      
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-x-hidden">
+        {!isCollapsed && (
+          <div className="px-3 mb-2 text-xs font-semibold text-[#3a685c] uppercase tracking-wider">
+            Main Menu
+          </div>
+        )}
+        
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              title={isCollapsed ? item.name : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group text-[15px] font-medium ${
+                isActive 
+                  ? 'bg-[var(--color-brand-sidebar-active)] text-white' 
+                  : 'hover:bg-[var(--color-brand-sidebar-hover)] hover:text-white'
+              } ${isCollapsed ? 'justify-center' : ''}`}
+            >
+              <item.icon className={`w-[18px] h-[18px] shrink-0 transition-opacity ${isActive ? 'opacity-100 text-[var(--color-brand-primary)]' : 'opacity-70 group-hover:opacity-100'}`} />
+              {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+            </Link>
+          );
+        })}
       </nav>
-      <div className="p-4 border-t border-[#1a3a31]">
-        <button className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-md transition-colors text-sm font-medium">
-          <span className="text-lg leading-none">+</span> Farm Action
+      
+      <div className={`p-4 border-t border-[#0a3128] ${isCollapsed ? 'flex justify-center' : ''}`}>
+        <button 
+          title={isCollapsed ? "Farm Action" : undefined}
+          className={`flex items-center justify-center gap-2 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-hover)] text-white py-2.5 rounded-lg transition-colors text-[15px] font-medium ${isCollapsed ? 'w-10 h-10 p-0 rounded-full' : 'w-full'}`}
+        >
+          {isCollapsed ? <Plus className="w-5 h-5" /> : <><span className="text-lg leading-none">+</span> Farm Action</>}
         </button>
       </div>
     </aside>

@@ -56,33 +56,43 @@ export default function BatchDetailsPage() {
 
   const onMortalitySubmit = async (data: any) => {
     try {
+      const formattedDate = new Date(data.date).toISOString();
       const res = await fetch("/api/mortalities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, batch_id: id }),
+        body: JSON.stringify({ ...data, date: formattedDate, batch_id: id }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to record mortality");
+      const resData = await res.json();
+      if (!res.ok) {
+        const errorMsg = typeof resData.error === 'string' ? resData.error : JSON.stringify(resData.error) || "Failed to record mortality";
+        throw new Error(errorMsg);
+      }
       toast.success("Mortality recorded");
       mForm.reset();
       fetchBatch();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "An unexpected error occurred");
     }
   };
 
   const onVaccinationSubmit = async (data: any) => {
     try {
+      const formattedDate = new Date(data.due_date).toISOString();
       const res = await fetch("/api/vaccinations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, batch_id: id }),
+        body: JSON.stringify({ ...data, due_date: formattedDate, batch_id: id }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to add vaccination");
+      const resData = await res.json();
+      if (!res.ok) {
+        const errorMsg = typeof resData.error === 'string' ? resData.error : JSON.stringify(resData.error) || "Failed to add vaccination";
+        throw new Error(errorMsg);
+      }
       toast.success("Vaccination added");
       vForm.reset();
       fetchBatch();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "An unexpected error occurred");
     }
   };
 
@@ -136,7 +146,7 @@ export default function BatchDetailsPage() {
             <form onSubmit={mForm.handleSubmit(onMortalitySubmit)} className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Quantity</label>
-                <input type="number" {...mForm.register("quantity")} className="w-full border p-2 rounded" />
+                <input type="number" required min="1" {...mForm.register("quantity")} className="w-full border p-2 rounded" />
               </div>
               <div>
                 <label className="text-sm font-medium">Cause</label>
@@ -144,9 +154,9 @@ export default function BatchDetailsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Date</label>
-                <input type="date" {...mForm.register("date")} className="w-full border p-2 rounded" />
+                <input type="date" required {...mForm.register("date")} className="w-full border p-2 rounded" />
               </div>
-              <button className="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">Record Death</button>
+              <button type="submit" className="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">Record Death</button>
             </form>
           </div>
           <div className="bg-white p-6 rounded-xl border shadow-sm">
@@ -169,15 +179,15 @@ export default function BatchDetailsPage() {
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-4"><ShieldPlus className="w-5 h-5 text-blue-500"/> Schedule Vaccination</h2>
             <form onSubmit={vForm.handleSubmit(onVaccinationSubmit)} className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Vaccine Name</label>
-                <input {...vForm.register("vaccine_name")} className="w-full border p-2 rounded" />
+                <label className="text-sm font-medium">Vaccine Name <span className="text-red-500">*</span></label>
+                <input required {...vForm.register("vaccine_name")} className="w-full border p-2 rounded" />
               </div>
               <div>
-                <label className="text-sm font-medium">Due Date</label>
-                <input type="date" {...vForm.register("due_date")} className="w-full border p-2 rounded" />
+                <label className="text-sm font-medium">Due Date <span className="text-red-500">*</span></label>
+                <input type="date" required {...vForm.register("due_date")} className="w-full border p-2 rounded" />
               </div>
               <div className="col-span-2">
-                <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Schedule</button>
+                <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Schedule</button>
               </div>
             </form>
           </div>
