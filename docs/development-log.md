@@ -1,5 +1,15 @@
 # Development Log
 
+## Phase 1 - Animal Operations
+- Implemented AnimalCategory, StageDefinition, Room, AnimalBatch, Mortality, Vaccination.
+- Implemented React Hook Form + Zod & TanStack tables for all pages.
+- Added strict backend validations for Room Capacity and Allowed Stages.
+- Automated batch quantity reduction on Mortality.
+- Built full feature-based APIs for all CRUD endpoints.
+- Updated Dashboard KPI cards to fetch live data from the database.
+
+
+
 ## Phase 0: Foundation
 - Project initialized.
 - Auth.js v5 setup.

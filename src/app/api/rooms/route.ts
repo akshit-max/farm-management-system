@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { logAudit } from "@/lib/audit";
+import { z } from "zod";
+
+const createRoomSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  capacity: z.number().min(1, "Capacity must be > 0"),
+  allowed_stages: z.string(),
+});
+
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  const farmId = session?.user?.farm_id;
+  if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const rooms = await db.room.findMany({
+      where: { farm_id: farmId, deleted_at: null },
+      orderBy: { name: "asc" },
+    });
+    return NextResponse.json({ data: rooms });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch rooms" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  const farmId = session?.user?.farm_id;
+  if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await req.json();
+    const parsedData = createRoomSchema.parse(body);
+
+    const room = await db.room.create({
+      data: { farm_id: farmId, ...parsedData },
+    });
+
+    await logAudit(session.user.id, farmId, "CREATE", "Room", room.id);
+    return NextResponse.json(room, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
+    return NextResponse.json({ error: "Failed to create room" }, { status: 500 });
+  }
+}

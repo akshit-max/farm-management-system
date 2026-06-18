@@ -3,16 +3,13 @@ import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCa
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { name: 'Animals', icon: Users, href: '/dashboard/animals' },
-  { name: 'Rooms & Farm Structure', icon: Grid, href: '/dashboard/structure' },
-  { name: 'Feed Management', icon: Layers, href: '/dashboard/feed' },
+  { name: 'Categories', icon: Layers, href: '/dashboard/animal-categories' },
+  { name: 'Stages', icon: Activity, href: '/dashboard/stages' },
+  { name: 'Rooms', icon: Grid, href: '/dashboard/rooms' },
+  { name: 'Batches (Livestock)', icon: Users, href: '/dashboard/animal-batches' },
+  { name: 'Feed Management', icon: FileText, href: '/dashboard/feed' },
   { name: 'Water Management', icon: Droplets, href: '/dashboard/water' },
   { name: 'Electricity Manager', icon: Zap, href: '/dashboard/electricity' },
-  { name: 'Inventory', icon: BookOpen, href: '/dashboard/inventory' },
-  { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales' },
-  { name: 'CRM', icon: Users, href: '/dashboard/crm' },
-  { name: 'Accounts', icon: FileText, href: '/dashboard/accounts' },
-  { name: 'Reports & Analytics', icon: LineChart, href: '/dashboard/reports' },
   { name: 'Settings', icon: Settings, href: '/settings' },
 ];
 

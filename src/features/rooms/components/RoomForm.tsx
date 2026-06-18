@@ -1,0 +1,100 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+
+const schema = z.object({
+  name: z.string().min(1, "Name is required"),
+  capacity: z.coerce.number().min(1, "Capacity must be > 0"),
+});
+
+export function RoomForm({ farmId, onSuccess }: { farmId: string; onSuccess: () => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [stages, setStages] = useState<any[]>([]);
+  const [selectedStages, setSelectedStages] = useState<string[]>([]);
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", capacity: 100 }
+  });
+
+  useEffect(() => {
+    fetch(`/api/stages?farmId=${farmId}`)
+      .then(res => res.json())
+      .then(data => setStages(data.data || []));
+  }, [farmId]);
+
+  const toggleStage = (stageId: string) => {
+    setSelectedStages(prev => prev.includes(stageId) ? prev.filter(id => id !== stageId) : [...prev, stageId]);
+  };
+
+  const onSubmit = async (data: any) => {
+    if (selectedStages.length === 0) {
+      toast.error("Please select at least one allowed stage.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, farm_id: farmId, allowed_stages: selectedStages.join(",") }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
+      toast.success("Room saved!");
+      reset();
+      setSelectedStages([]);
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
+      <h2 className="text-lg font-semibold text-gray-800">Add New Room</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Room Name</label>
+          <input {...register("name")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" placeholder="Barn A" />
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message as string}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (Max Animals)</label>
+          <input type="number" {...register("capacity")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" />
+          {errors.capacity && <p className="text-red-500 text-xs mt-1">{errors.capacity.message as string}</p>}
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Allowed Stages</label>
+        <div className="flex flex-wrap gap-2">
+          {stages.map(stage => (
+            <button
+              type="button"
+              key={stage.id}
+              onClick={() => toggleStage(stage.id)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                selectedStages.includes(stage.id)
+                  ? "bg-emerald-100 border-emerald-500 text-emerald-800"
+                  : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {stage.animal_category?.name} - {stage.stage_name}
+            </button>
+          ))}
+          {stages.length === 0 && <span className="text-sm text-gray-500">No stages found. Create stages first.</span>}
+        </div>
+      </div>
+      <div className="flex justify-end mt-4">
+        <button type="submit" disabled={isLoading} className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50">
+          {isLoading ? "Saving..." : "Save Room"}
+        </button>
+      </div>
+    </form>
+  );
+}

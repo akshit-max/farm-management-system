@@ -5,11 +5,13 @@ declare module "next-auth" {
     user: {
       id: string
       role: string
+      farm_id?: string | null
     } & DefaultSession["user"]
   }
 
   interface User {
     id: string
     role: string
+    farm_id?: string | null
   }
 }
