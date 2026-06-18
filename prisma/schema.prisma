@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String       @unique
+  description   String?
+  permissions   Permission[] @relation("RolePermissions")
+  users         User[]
+
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime     @default(now()) @updatedAt
+  sync_status   String       @default("PENDING")
+
+  @@map("roles")
+}
+
+model Permission {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @unique
+  description   String?
+  roles         Role[]   @relation("RolePermissions")
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime @default(now()) @updatedAt
+  sync_status   String   @default("PENDING")
+
+  @@map("permissions")
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String
+  email         String     @unique
+  password_hash String
+  role_id       String     @db.Uuid
+  role          Role       @relation(fields: [role_id], references: [id])
+  active_status Boolean    @default(true)
+
+  audit_logs    AuditLog[]
+
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime   @default(now()) @updatedAt
+  sync_status   String     @default("PENDING")
+
+  @@map("users")
+}
+
+model Farm {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  location      String?
+  active_status Boolean    @default(true)
+
+  settings      Settings?
+
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime   @default(now()) @updatedAt
+  sync_status   String     @default("PENDING")
+
+  @@map("farms")
+}
+
+model Settings {
+  id            String   @id @default(uuid()) @db.Uuid
+  farm_id       String   @unique @db.Uuid
+  farm          Farm     @relation(fields: [farm_id], references: [id])
+  theme         String   @default("light")
+  currency      String   @default("USD")
+  date_format   String   @default("YYYY-MM-DD")
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime @default(now()) @updatedAt
+  sync_status   String   @default("PENDING")
+
+  @@map("settings")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  user_id       String?  @db.Uuid
+  user          User?    @relation(fields: [user_id], references: [id])
+  action        String
+  entity        String
+  entity_id     String   @db.Uuid
+  timestamp     DateTime @default(now())
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime @default(now()) @updatedAt
+  sync_status   String   @default("PENDING")
+
+  @@map("audit_logs")
+}
