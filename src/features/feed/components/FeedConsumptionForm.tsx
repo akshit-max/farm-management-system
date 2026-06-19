@@ -1,0 +1,135 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+
+const schema = z.object({
+  batch_id: z.string().min(1, "Batch is required"),
+  feed_type_id: z.string().min(1, "Feed type is required"),
+  date: z.string().min(1, "Date is required"),
+  quantity_kg: z.coerce.number().min(0.01, "Quantity must be > 0"),
+  cost: z.coerce.number().min(0, "Cost must be >= 0"),
+  notes: z.string().optional(),
+});
+
+export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [feedTypes, setFeedTypes] = useState<any[]>([]);
+  const [selectedFeedType, setSelectedFeedType] = useState<any>(null);
+
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      batch_id: "", feed_type_id: "", date: new Date().toISOString().split('T')[0], quantity_kg: 0, cost: 0, notes: ""
+    }
+  });
+
+  const watchFeedTypeId = watch("feed_type_id");
+  const watchQuantity = watch("quantity_kg");
+
+  useEffect(() => {
+    fetch(`/api/animal-batches`)
+      .then(res => res.json())
+      .then(data => setBatches(data.data || []));
+      
+    fetch(`/api/feed-types`)
+      .then(res => res.json())
+      .then(data => setFeedTypes(data.data || []));
+  }, []);
+
+  useEffect(() => {
+    if (watchFeedTypeId) {
+      const feed = feedTypes.find(f => f.id === watchFeedTypeId);
+      setSelectedFeedType(feed);
+      // Auto-calculate cost based on standard cost per kg
+      if (feed && watchQuantity) {
+        setValue("cost", parseFloat((feed.cost_per_kg * Number(watchQuantity)).toFixed(2)));
+      }
+    } else {
+      setSelectedFeedType(null);
+      setValue("cost", 0);
+    }
+  }, [watchFeedTypeId, watchQuantity, feedTypes, setValue]);
+
+  const onSubmit = async (data: any) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/feed-consumption", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save");
+      
+      toast.success("Feed consumption recorded!");
+      reset({ batch_id: "", feed_type_id: "", date: new Date().toISOString().split('T')[0], quantity_kg: 0, cost: 0, notes: "" });
+      onSuccess();
+      
+      // Refresh feed types to update stock locally
+      fetch(`/api/feed-types`).then(res => res.json()).then(data => setFeedTypes(data.data || []));
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
+      <h2 className="text-lg font-semibold text-gray-800">Record Feed Consumption</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date <span className="text-red-500">*</span></label>
+          <input type="date" {...register("date")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" />
+          {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date.message as string}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Animal Batch <span className="text-red-500">*</span></label>
+          <select {...register("batch_id")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500">
+            <option value="">Select Batch...</option>
+            {batches.map(b => <option key={b.id} value={b.id}>{b.batch_number} - {b.animal_category.name}</option>)}
+          </select>
+          {errors.batch_id && <p className="text-red-500 text-xs mt-1">{errors.batch_id.message as string}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Feed Type <span className="text-red-500">*</span></label>
+          <select {...register("feed_type_id")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500">
+            <option value="">Select Feed...</option>
+            {feedTypes.map(f => (
+              <option key={f.id} value={f.id} disabled={f.stock_quantity <= 0}>
+                {f.name} (Stock: {f.stock_quantity}kg)
+              </option>
+            ))}
+          </select>
+          {errors.feed_type_id && <p className="text-red-500 text-xs mt-1">{errors.feed_type_id.message as string}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Quantity (kg) <span className="text-red-500">*</span></label>
+          <input type="number" step="0.01" {...register("quantity_kg")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" />
+          {errors.quantity_kg && <p className="text-red-500 text-xs mt-1">{errors.quantity_kg.message as string}</p>}
+          {selectedFeedType && <p className="text-xs text-gray-500 mt-1">Available: {selectedFeedType.stock_quantity} kg</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Total Cost <span className="text-red-500">*</span></label>
+          <input type="number" step="0.01" {...register("cost")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" readOnly />
+          <p className="text-xs text-gray-500 mt-1">Auto-calculated</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <input {...register("notes")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" placeholder="Optional details..." />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 mt-4">
+        <button type="submit" disabled={isLoading} className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+          {isLoading ? "Recording..." : "Record Consumption"}
+        </button>
+      </div>
+    </form>
+  );
+}

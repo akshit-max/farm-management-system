@@ -20,6 +20,8 @@ export default async function DashboardPage() {
   let allMortalities: any[] = [];
   let categories: any[] = [];
   let auditLogs: any[] = [];
+  let feedTypes: any[] = [];
+  let todayFeedConsumption = 0;
   let isOffline = false;
 
   try {
@@ -39,6 +41,17 @@ export default async function DashboardPage() {
         orderBy: { timestamp: "desc" },
         take: 5,
         include: { user: { select: { name: true } } }
+      }),
+      db.feedType.findMany({
+        where: { farm_id: farmId, deleted_at: null }
+      }),
+      db.feedConsumption.aggregate({
+        _sum: { quantity_kg: true },
+        where: { 
+          farm_id: farmId, 
+          deleted_at: null, 
+          date: { gte: new Date(new Date().setHours(0,0,0,0)) } 
+        }
       })
     ]);
     totalBatches = tb;
@@ -49,6 +62,8 @@ export default async function DashboardPage() {
     allMortalities = am;
     categories = c;
     auditLogs = logs;
+    feedTypes = arguments[0][8] as any;
+    todayFeedConsumption = (arguments[0][9] as any)._sum.quantity_kg || 0;
   } catch (err) {
     console.error("Database connection error (Offline Mode):", err);
     isOffline = true;
@@ -61,14 +76,21 @@ export default async function DashboardPage() {
   const overdueVaccinationsCount = pendingVaccinations.filter(v => new Date(v.due_date) < now).length;
   const upcomingVaccinationsCount = pendingVaccinations.length - overdueVaccinationsCount;
 
+  let currentFeedStock = 0;
+  let lowStockCount = 0;
+  feedTypes.forEach(f => {
+    currentFeedStock += f.stock_quantity;
+    if (f.stock_quantity <= f.reorder_level) lowStockCount++;
+  });
+
   // Mock data for Phase 2 pending items to match YNEX UI
   const topMetrics = [
     { label: "Weather", value: "27°C", sub: "Wed, 24-06-39", icon: Sun, color: "text-amber-500", bg: "bg-amber-50" },
     { label: "Total Animals", value: totalAnimals.toLocaleString(), sub: "Across all categories", icon: Users, color: "text-brand-primary", bg: "bg-brand-primary/10" },
     { label: "Mortality Today", value: "0", sub: "0.0%", icon: Activity, color: "text-status-danger", bg: "bg-status-danger/10", trend: "0.0%" },
     { label: "Active Batches", value: totalBatches.toString(), sub: "Currently housed", icon: Layers, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Today's Feed", value: "0 kg", sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: "+0%" },
-    { label: "Today's Water", value: "0 liters", sub: "Usage", icon: Droplets, color: "text-cyan-500", bg: "bg-cyan-50", trend: "-0%" },
+    { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
+    { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: FileText, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },
     { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
     { label: "Today's Revenue", value: "$0.00", sub: "Sales", icon: DollarSign, color: "text-brand-primary", bg: "bg-brand-primary/10" },
   ];

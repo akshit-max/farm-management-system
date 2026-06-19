@@ -8,119 +8,124 @@ datasource db {
 }
 
 model Role {
-  id            String       @id @default(uuid()) @db.Uuid
-  name          String       @unique
-  description   String?
-  permissions   Permission[] @relation("RolePermissions")
-  users         User[]
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @unique
+  description String?
+  permissions Permission[] @relation("RolePermissions")
+  users       User[]
 
-  created_at    DateTime     @default(now())
-  updated_at    DateTime     @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
-  last_modified DateTime     @default(now()) @updatedAt
-  sync_status   String       @default("PENDING")
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@map("roles")
 }
 
 model Permission {
-  id            String   @id @default(uuid()) @db.Uuid
-  name          String   @unique
-  description   String?
-  roles         Role[]   @relation("RolePermissions")
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+  roles       Role[]  @relation("RolePermissions")
 
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
-  last_modified DateTime @default(now()) @updatedAt
-  sync_status   String   @default("PENDING")
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@map("permissions")
 }
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
+  id            String @id @default(uuid()) @db.Uuid
   name          String
-  email         String     @unique
+  email         String @unique
   password_hash String
-  role_id       String     @db.Uuid
-  role          Role       @relation(fields: [role_id], references: [id])
-  
-  farm_id       String?    @db.Uuid
-  farm          Farm?      @relation(fields: [farm_id], references: [id])
-  
-  active_status Boolean    @default(true)
+  role_id       String @db.Uuid
+  role          Role   @relation(fields: [role_id], references: [id])
 
-  audit_logs    AuditLog[]
+  farm_id String? @db.Uuid
+  farm    Farm?   @relation(fields: [farm_id], references: [id])
 
-  created_at    DateTime   @default(now())
-  updated_at    DateTime   @updatedAt
+  active_status Boolean @default(true)
+
+  audit_logs AuditLog[]
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
-  last_modified DateTime   @default(now()) @updatedAt
-  sync_status   String     @default("PENDING")
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
-  reset_token         String?   @unique
-  reset_token_expiry  DateTime?
+  reset_token        String?   @unique
+  reset_token_expiry DateTime?
 
   @@map("users")
 }
 
 model Farm {
-  id            String     @id @default(uuid()) @db.Uuid
+  id            String  @id @default(uuid()) @db.Uuid
   name          String
   description   String?
   location      String?
-  active_status Boolean    @default(true)
+  active_status Boolean @default(true)
 
-  users         User[]
-  settings      Settings?
-  
+  users    User[]
+  settings Settings?
+
   animal_categories AnimalCategory[]
   stage_definitions StageDefinition[]
   rooms             Room[]
   animal_batches    AnimalBatch[]
 
-  created_at    DateTime   @default(now())
-  updated_at    DateTime   @updatedAt
-  deleted_at    DateTime?
-  last_modified DateTime   @default(now()) @updatedAt
-  sync_status   String     @default("PENDING")
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+  deleted_at       DateTime?
+  last_modified    DateTime          @default(now()) @updatedAt
+  sync_status      String            @default("PENDING")
+  suppliers        Supplier[]
+  customers        Customer[]
+  feedTypes        FeedType[]
+  feedConsumptions FeedConsumption[]
+  salesInvoices    SalesInvoice[]
 
   @@map("farms")
 }
 
 model Settings {
-  id            String   @id @default(uuid()) @db.Uuid
-  farm_id       String   @unique @db.Uuid
-  farm          Farm     @relation(fields: [farm_id], references: [id])
-  theme         String   @default("light")
-  currency      String   @default("USD")
-  date_format   String   @default("YYYY-MM-DD")
+  id          String @id @default(uuid()) @db.Uuid
+  farm_id     String @unique @db.Uuid
+  farm        Farm   @relation(fields: [farm_id], references: [id])
+  theme       String @default("light")
+  currency    String @default("USD")
+  date_format String @default("YYYY-MM-DD")
 
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
-  last_modified DateTime @default(now()) @updatedAt
-  sync_status   String   @default("PENDING")
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@map("settings")
 }
 
 model AuditLog {
-  id            String   @id @default(uuid()) @db.Uuid
-  farm_id       String?  @db.Uuid
-  user_id       String?  @db.Uuid
-  user          User?    @relation(fields: [user_id], references: [id])
-  action        String
-  entity        String
-  entity_id     String   @db.Uuid
-  timestamp     DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  farm_id   String?  @db.Uuid
+  user_id   String?  @db.Uuid
+  user      User?    @relation(fields: [user_id], references: [id])
+  action    String
+  entity    String
+  entity_id String   @db.Uuid
+  timestamp DateTime @default(now())
 
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
-  last_modified DateTime @default(now()) @updatedAt
-  sync_status   String   @default("PENDING")
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@map("audit_logs")
 }
@@ -128,36 +133,36 @@ model AuditLog {
 // --- Phase 1: Animal Operations ---
 
 model AnimalCategory {
-  id                    String            @id @default(uuid()) @db.Uuid
-  farm_id               String            @db.Uuid
-  farm                  Farm              @relation(fields: [farm_id], references: [id])
-  name                  String
-  description           String?
-  mortality_percentage  Float
-  sale_options          String?           // E.g. "Live, Processed"
-  active_status         Boolean           @default(true)
+  id                   String  @id @default(uuid()) @db.Uuid
+  farm_id              String  @db.Uuid
+  farm                 Farm    @relation(fields: [farm_id], references: [id])
+  name                 String
+  description          String?
+  mortality_percentage Float
+  sale_options         String? // E.g. "Live, Processed"
+  active_status        Boolean @default(true)
 
-  stage_definitions     StageDefinition[]
-  animal_batches        AnimalBatch[]
+  stage_definitions StageDefinition[]
+  animal_batches    AnimalBatch[]
 
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
-  deleted_at            DateTime?
-  last_modified         DateTime          @default(now()) @updatedAt
-  sync_status           String            @default("PENDING")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
-  @@index([farm_id])
   @@unique([farm_id, name])
+  @@index([farm_id])
   @@map("animal_categories")
 }
 
 model StageDefinition {
-  id                      String         @id @default(uuid()) @db.Uuid
-  farm_id                 String         @db.Uuid
-  farm                    Farm           @relation(fields: [farm_id], references: [id])
-  animal_category_id      String         @db.Uuid
-  animal_category         AnimalCategory @relation(fields: [animal_category_id], references: [id])
-  
+  id                 String         @id @default(uuid()) @db.Uuid
+  farm_id            String         @db.Uuid
+  farm               Farm           @relation(fields: [farm_id], references: [id])
+  animal_category_id String         @db.Uuid
+  animal_category    AnimalCategory @relation(fields: [animal_category_id], references: [id])
+
   stage_name              String
   expected_duration_days  Int
   expected_weight         Float
@@ -165,38 +170,38 @@ model StageDefinition {
   water_requirement       Float?
   electricity_requirement Float?
   display_order           Int
-  active_status           Boolean        @default(true)
+  active_status           Boolean @default(true)
 
-  animal_batches          AnimalBatch[]
+  animal_batches AnimalBatch[]
 
-  created_at              DateTime       @default(now())
-  updated_at              DateTime       @updatedAt
-  deleted_at              DateTime?
-  last_modified           DateTime       @default(now()) @updatedAt
-  sync_status             String         @default("PENDING")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
+  @@unique([animal_category_id, display_order])
   @@index([farm_id])
   @@index([animal_category_id])
-  @@unique([animal_category_id, display_order])
   @@map("stage_definitions")
 }
 
 model Room {
-  id                String         @id @default(uuid()) @db.Uuid
-  farm_id           String         @db.Uuid
-  farm              Farm           @relation(fields: [farm_id], references: [id])
-  name              String
-  capacity          Int
-  allowed_stages    String         // JSON array or comma-separated list of stage IDs
-  active_status     Boolean        @default(true)
+  id             String  @id @default(uuid()) @db.Uuid
+  farm_id        String  @db.Uuid
+  farm           Farm    @relation(fields: [farm_id], references: [id])
+  name           String
+  capacity       Int
+  allowed_stages String // JSON array or comma-separated list of stage IDs
+  active_status  Boolean @default(true)
 
-  animal_batches    AnimalBatch[]
+  animal_batches AnimalBatch[]
 
-  created_at        DateTime       @default(now())
-  updated_at        DateTime       @updatedAt
-  deleted_at        DateTime?
-  last_modified     DateTime       @default(now()) @updatedAt
-  sync_status       String         @default("PENDING")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@index([farm_id])
   @@map("rooms")
@@ -206,14 +211,14 @@ model AnimalBatch {
   id                 String          @id @default(uuid()) @db.Uuid
   farm_id            String          @db.Uuid
   farm               Farm            @relation(fields: [farm_id], references: [id])
-  batch_number       String          
+  batch_number       String
   animal_category_id String          @db.Uuid
   animal_category    AnimalCategory  @relation(fields: [animal_category_id], references: [id])
   room_id            String          @db.Uuid
   room               Room            @relation(fields: [room_id], references: [id])
   current_stage_id   String          @db.Uuid
   current_stage      StageDefinition @relation(fields: [current_stage_id], references: [id])
-  
+
   arrival_date       DateTime
   quantity           Int
   initial_weight     Float
@@ -221,16 +226,18 @@ model AnimalBatch {
   cost_per_animal    Float
   notes              String?
   expected_sale_date DateTime?
-  status             String          @default("ACTIVE") // ACTIVE, SOLD, QUARANTINED, etc.
+  status             String    @default("ACTIVE") // ACTIVE, SOLD, QUARANTINED, etc.
 
-  mortalities        Mortality[]
-  vaccinations       Vaccination[]
+  mortalities  Mortality[]
+  vaccinations Vaccination[]
 
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
-  deleted_at         DateTime?
-  last_modified      DateTime        @default(now()) @updatedAt
-  sync_status        String          @default("PENDING")
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime           @default(now()) @updatedAt
+  sync_status       String             @default("PENDING")
+  feedConsumptions  FeedConsumption[]
+  salesInvoiceItems SalesInvoiceItem[]
 
   @@index([farm_id])
   @@index([animal_category_id])
@@ -240,40 +247,198 @@ model AnimalBatch {
 }
 
 model Mortality {
-  id                 String       @id @default(uuid()) @db.Uuid
-  batch_id           String       @db.Uuid
-  batch              AnimalBatch  @relation(fields: [batch_id], references: [id])
-  quantity           Int
-  cause              String?
-  date               DateTime
-  notes              String?
+  id       String      @id @default(uuid()) @db.Uuid
+  batch_id String      @db.Uuid
+  batch    AnimalBatch @relation(fields: [batch_id], references: [id])
+  quantity Int
+  cause    String?
+  date     DateTime
+  notes    String?
 
-  created_at         DateTime     @default(now())
-  updated_at         DateTime     @updatedAt
-  deleted_at         DateTime?
-  last_modified      DateTime     @default(now()) @updatedAt
-  sync_status        String       @default("PENDING")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@index([batch_id])
   @@map("mortalities")
 }
 
 model Vaccination {
-  id                 String       @id @default(uuid()) @db.Uuid
-  batch_id           String       @db.Uuid
-  batch              AnimalBatch  @relation(fields: [batch_id], references: [id])
-  vaccine_name       String
-  due_date           DateTime
-  completed_date     DateTime?
-  status             String       @default("PENDING") // PENDING, COMPLETED, OVERDUE
-  notes              String?
+  id             String      @id @default(uuid()) @db.Uuid
+  batch_id       String      @db.Uuid
+  batch          AnimalBatch @relation(fields: [batch_id], references: [id])
+  vaccine_name   String
+  due_date       DateTime
+  completed_date DateTime?
+  status         String      @default("PENDING") // PENDING, COMPLETED, OVERDUE
+  notes          String?
 
-  created_at         DateTime     @default(now())
-  updated_at         DateTime     @updatedAt
-  deleted_at         DateTime?
-  last_modified      DateTime     @default(now()) @updatedAt
-  sync_status        String       @default("PENDING")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
 
   @@index([batch_id])
   @@map("vaccinations")
+}
+
+// --- Phase 2: CRM & Suppliers ---
+
+model Supplier {
+  id             String  @id @default(uuid()) @db.Uuid
+  farm_id        String  @db.Uuid
+  farm           Farm    @relation(fields: [farm_id], references: [id])
+  company_name   String
+  contact_person String?
+  phone          String
+  email          String?
+  address        String?
+  gst            String?
+  supplier_type  String // Animal, Feed, Medicine, Utility, Other
+  notes          String?
+  status         String  @default("ACTIVE")
+
+  feed_types FeedType[]
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@map("suppliers")
+}
+
+model Customer {
+  id             String  @id @default(uuid()) @db.Uuid
+  farm_id        String  @db.Uuid
+  farm           Farm    @relation(fields: [farm_id], references: [id])
+  company_name   String
+  contact_person String?
+  phone          String?
+  email          String?
+  address        String?
+  customer_type  String // Retail, Wholesale, Contract Buyer, Other
+  notes          String?
+  status         String  @default("ACTIVE")
+
+  sales_invoices SalesInvoice[]
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@map("customers")
+}
+
+// --- Phase 2: Feed Management ---
+
+model FeedType {
+  id                       String    @id @default(uuid()) @db.Uuid
+  farm_id                  String    @db.Uuid
+  farm                     Farm      @relation(fields: [farm_id], references: [id])
+  name                     String
+  supplier_id              String?   @db.Uuid
+  supplier                 Supplier? @relation(fields: [supplier_id], references: [id])
+  cost_per_kg              Float     @default(0)
+  stock_quantity           Float     @default(0)
+  reorder_level            Float     @default(0)
+  feed_efficiency_baseline Float?
+  notes                    String?
+
+  consumptions FeedConsumption[]
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@map("feed_types")
+}
+
+model FeedConsumption {
+  id           String      @id @default(uuid()) @db.Uuid
+  farm_id      String      @db.Uuid
+  farm         Farm        @relation(fields: [farm_id], references: [id])
+  batch_id     String      @db.Uuid
+  batch        AnimalBatch @relation(fields: [batch_id], references: [id])
+  feed_type_id String      @db.Uuid
+  feed_type    FeedType    @relation(fields: [feed_type_id], references: [id])
+
+  date        DateTime
+  quantity_kg Float
+  cost        Float
+  notes       String?
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@index([batch_id])
+  @@index([feed_type_id])
+  @@map("feed_consumptions")
+}
+
+// --- Phase 2: Sales Management ---
+
+model SalesInvoice {
+  id             String   @id @default(uuid()) @db.Uuid
+  farm_id        String   @db.Uuid
+  farm           Farm     @relation(fields: [farm_id], references: [id])
+  customer_id    String   @db.Uuid
+  customer       Customer @relation(fields: [customer_id], references: [id])
+  invoice_number String
+  sale_type      String   @default("Live Animal Sale")
+  invoice_date   DateTime
+  subtotal       Float    @default(0)
+  tax            Float    @default(0)
+  total          Float    @default(0)
+  payment_status String   @default("PENDING") // PENDING, PAID, PARTIAL
+  notes          String?
+
+  items SalesInvoiceItem[]
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@index([customer_id])
+  @@map("sales_invoices")
+}
+
+model SalesInvoiceItem {
+  id         String       @id @default(uuid()) @db.Uuid
+  invoice_id String       @db.Uuid
+  invoice    SalesInvoice @relation(fields: [invoice_id], references: [id])
+  batch_id   String       @db.Uuid
+  batch      AnimalBatch  @relation(fields: [batch_id], references: [id])
+
+  quantity Int
+  rate     Float
+  amount   Float
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([invoice_id])
+  @@index([batch_id])
+  @@map("sales_invoice_items")
 }

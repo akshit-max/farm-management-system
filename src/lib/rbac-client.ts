@@ -12,6 +12,7 @@ export function useRBAC() {
   
   // Workers cannot mutate data (Create, Update, Delete)
   const canMutate = isManager;
+  const canManageCustomers = isManager || role === "Accountant";
 
   return {
     role,
@@ -19,5 +20,6 @@ export function useRBAC() {
     isManager,
     isAccountant,
     canMutate,
+    canManageCustomers,
   };
 }
