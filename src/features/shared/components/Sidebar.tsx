@@ -23,7 +23,7 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
     { name: 'Electricity Manager', icon: Zap, href: '/dashboard/electricity', show: true },
     { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales', show: isManager || isAccountant },
     { name: 'Accounts', icon: BookOpen, href: '/dashboard/accounts', show: isOwner || isAccountant },
-    { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager },
+    { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager || isAccountant },
     { name: 'CRM (Customers)', icon: Users, href: '/dashboard/customers', show: isManager || isAccountant },
     { name: 'Reports & Analytics', icon: LineChart, href: '/dashboard/reports', show: isManager || isAccountant },
     { name: 'User Management', icon: UserCog, href: '/dashboard/users', show: isOwner },

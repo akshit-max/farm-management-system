@@ -29,7 +29,7 @@ export default async function DashboardPage() {
   let isOffline = false;
 
   try {
-    const [tb, as, m, pv, av, am, c, logs] = await Promise.all([
+    const [tb, as, m, pv, av, am, c, logs, fTypes, fConsum, salesData] = await Promise.all([
       db.animalBatch.count({ where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" } }),
       db.animalBatch.aggregate({ _sum: { quantity: true }, where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" } }),
       db.mortality.aggregate({ _sum: { quantity: true }, where: { batch: { farm_id: farmId }, deleted_at: null } }),
@@ -69,10 +69,10 @@ export default async function DashboardPage() {
     allMortalities = am;
     categories = c;
     auditLogs = logs;
-    feedTypes = arguments[0][8] as any;
-    todayFeedConsumption = (arguments[0][9] as any)._sum.quantity_kg || 0;
+    feedTypes = fTypes as any;
+    todayFeedConsumption = (fConsum as any)?._sum?.quantity_kg || 0;
     
-    const sales = arguments[0][10] as any[];
+    const sales = salesData as any[];
     const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
     const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
     
@@ -101,11 +101,18 @@ export default async function DashboardPage() {
     if (f.stock_quantity <= f.reorder_level) lowStockCount++;
   });
 
+  const startOfTodayForMortality = new Date(); 
+  startOfTodayForMortality.setHours(0,0,0,0);
+  const todayMortality = allMortalities.reduce((sum, m) => {
+    return new Date(m.date) >= startOfTodayForMortality ? sum + m.quantity : sum;
+  }, 0);
+  const todayMortalityRate = totalAnimals > 0 ? ((todayMortality / totalAnimals) * 100).toFixed(1) : "0.0";
+
   // Mock data for Phase 2 pending items to match YNEX UI
   const topMetrics = [
     { label: "Weather", value: "27°C", sub: "Wed, 24-06-39", icon: Sun, color: "text-amber-500", bg: "bg-amber-50" },
     { label: "Total Animals", value: totalAnimals.toLocaleString(), sub: "Across all categories", icon: Users, color: "text-brand-primary", bg: "bg-brand-primary/10" },
-    { label: "Mortality Today", value: "0", sub: "0.0%", icon: Activity, color: "text-status-danger", bg: "bg-status-danger/10", trend: "0.0%" },
+    { label: "Mortality Today", value: todayMortality.toString(), sub: `${todayMortalityRate}%`, icon: Activity, color: todayMortality > 0 ? "text-status-danger" : "text-emerald-500", bg: todayMortality > 0 ? "bg-status-danger/10" : "bg-emerald-50", trend: `${todayMortalityRate}%` },
     { label: "Active Batches", value: totalBatches.toString(), sub: "Currently housed", icon: Layers, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
     { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: FileText, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },

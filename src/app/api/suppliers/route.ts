@@ -50,6 +50,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Supplier with this company name already exists" }, { status: 400 });
     }
 
+    if (parsedData.phone) {
+      const phoneExists = await db.supplier.findFirst({
+        where: { farm_id: farmId, phone: parsedData.phone, deleted_at: null },
+      });
+      if (phoneExists) {
+        return NextResponse.json({ error: "Supplier phone already exists" }, { status: 400 });
+      }
+    }
+
+    if (parsedData.email) {
+      const emailExists = await db.supplier.findFirst({
+        where: { farm_id: farmId, email: parsedData.email, deleted_at: null },
+      });
+      if (emailExists) {
+        return NextResponse.json({ error: "Supplier email already exists" }, { status: 400 });
+      }
+    }
+
     const supplier = await db.supplier.create({
       data: { farm_id: farmId, ...parsedData },
     });

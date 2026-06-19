@@ -44,11 +44,12 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/customers/${deleteId}`, { method: "DELETE" });
+      const json = await res.json();
       if (res.ok) {
         toast.success("Customer deleted successfully");
         fetchCustomers();
       } else {
-        toast.error("Failed to delete customer");
+        toast.error(json.error || "Failed to delete customer");
       }
     } catch (err) {
       toast.error("Network error");

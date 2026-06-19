@@ -35,6 +35,24 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Supplier with this company name already exists" }, { status: 400 });
     }
 
+    if (parsedData.phone) {
+      const phoneExists = await db.supplier.findFirst({
+        where: { farm_id: farmId, phone: parsedData.phone, id: { not: params.id }, deleted_at: null },
+      });
+      if (phoneExists) {
+        return NextResponse.json({ error: "Supplier phone already exists" }, { status: 400 });
+      }
+    }
+
+    if (parsedData.email) {
+      const emailExists = await db.supplier.findFirst({
+        where: { farm_id: farmId, email: parsedData.email, id: { not: params.id }, deleted_at: null },
+      });
+      if (emailExists) {
+        return NextResponse.json({ error: "Supplier email already exists" }, { status: 400 });
+      }
+    }
+
     const supplier = await db.supplier.updateMany({
       where: { id: params.id, farm_id: farmId },
       data: parsedData,

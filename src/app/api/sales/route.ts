@@ -25,16 +25,31 @@ export async function GET(req: NextRequest) {
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(req.url);
+  const showCancelled = searchParams.get("showCancelled") === "true";
+
   try {
     const invoices = await db.salesInvoice.findMany({
-      where: { farm_id: farmId, deleted_at: null },
+      where: {
+        farm_id: farmId,
+        // If showCancelled=true → return ALL (active + cancelled/soft-deleted)
+        // If showCancelled=false (default) → return only active (deleted_at: null)
+        ...(showCancelled ? {} : { deleted_at: null }),
+      },
       include: { 
         customer: true,
         items: { include: { batch: { include: { animal_category: true } } } }
       },
       orderBy: { invoice_date: "desc" },
     });
-    return NextResponse.json({ data: invoices });
+
+    // Annotate each invoice with a status field for the UI
+    const annotated = invoices.map(inv => ({
+      ...inv,
+      status: inv.deleted_at ? "CANCELLED" : "ACTIVE",
+    }));
+
+    return NextResponse.json({ data: annotated });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch sales invoices" }, { status: 500 });
   }

@@ -44,11 +44,12 @@ export function SupplierTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/suppliers/${deleteId}`, { method: "DELETE" });
+      const json = await res.json();
       if (res.ok) {
         toast.success("Supplier deleted successfully");
         fetchSuppliers();
       } else {
-        toast.error("Failed to delete supplier");
+        toast.error(json.error || "Failed to delete supplier");
       }
     } catch (err) {
       toast.error("Network error");

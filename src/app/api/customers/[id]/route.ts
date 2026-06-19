@@ -37,6 +37,24 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Customer with this name already exists" }, { status: 400 });
     }
 
+    if (parsedData.phone) {
+      const phoneExists = await db.customer.findFirst({
+        where: { farm_id: farmId, phone: parsedData.phone, id: { not: params.id }, deleted_at: null },
+      });
+      if (phoneExists) {
+        return NextResponse.json({ error: "Customer phone already exists" }, { status: 400 });
+      }
+    }
+
+    if (parsedData.email) {
+      const emailExists = await db.customer.findFirst({
+        where: { farm_id: farmId, email: parsedData.email, id: { not: params.id }, deleted_at: null },
+      });
+      if (emailExists) {
+        return NextResponse.json({ error: "Customer email already exists" }, { status: 400 });
+      }
+    }
+
     const customer = await db.customer.updateMany({
       where: { id: params.id, farm_id: farmId },
       data: parsedData,
@@ -63,6 +81,17 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
   }
 
   try {
+    // M3: Block deletion if active sales invoices reference this customer
+    const invoiceCount = await db.salesInvoice.count({
+      where: { customer_id: params.id, deleted_at: null },
+    });
+    if (invoiceCount > 0) {
+      return NextResponse.json(
+        { error: "Customer cannot be deleted because sales history exists." },
+        { status: 400 }
+      );
+    }
+
     const result = await db.customer.updateMany({
       where: { id: params.id, farm_id: farmId },
       data: { deleted_at: new Date() },
