@@ -80,16 +80,21 @@ model Farm {
   rooms             Room[]
   animal_batches    AnimalBatch[]
 
-  created_at       DateTime          @default(now())
-  updated_at       DateTime          @updatedAt
-  deleted_at       DateTime?
-  last_modified    DateTime          @default(now()) @updatedAt
-  sync_status      String            @default("PENDING")
-  suppliers        Supplier[]
-  customers        Customer[]
-  feedTypes        FeedType[]
-  feedConsumptions FeedConsumption[]
-  salesInvoices    SalesInvoice[]
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime           @default(now()) @updatedAt
+  sync_status       String             @default("PENDING")
+  suppliers         Supplier[]
+  customers         Customer[]
+  feedTypes         FeedType[]
+  feedConsumptions  FeedConsumption[]
+  salesInvoices     SalesInvoice[]
+  waterUsages       WaterUsage[]
+  utilityMeters     UtilityMeter[]
+  electricityUsages ElectricityUsage[]
+  slaughterRecords  SlaughterRecord[]
+  inventoryItems    InventoryItem[]
 
   @@map("farms")
 }
@@ -195,7 +200,10 @@ model Room {
   allowed_stages String // JSON array or comma-separated list of stage IDs
   active_status  Boolean @default(true)
 
-  animal_batches AnimalBatch[]
+  animal_batches    AnimalBatch[]
+  waterUsages       WaterUsage[]
+  utilityMeters     UtilityMeter[]
+  electricityUsages ElectricityUsage[]
 
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
@@ -238,6 +246,8 @@ model AnimalBatch {
   sync_status       String             @default("PENDING")
   feedConsumptions  FeedConsumption[]
   salesInvoiceItems SalesInvoiceItem[]
+  waterUsages       WaterUsage[]
+  slaughterRecords  SlaughterRecord[]
 
   @@index([farm_id])
   @@index([animal_category_id])
@@ -441,4 +451,181 @@ model SalesInvoiceItem {
   @@index([invoice_id])
   @@index([batch_id])
   @@map("sales_invoice_items")
+}
+
+// --- Phase 3: Water & Electricity Management ---
+
+model WaterUsage {
+  id       String       @id @default(uuid()) @db.Uuid
+  farm_id  String       @db.Uuid
+  farm     Farm         @relation(fields: [farm_id], references: [id])
+  room_id  String       @db.Uuid
+  room     Room         @relation(fields: [room_id], references: [id])
+  batch_id String?      @db.Uuid
+  batch    AnimalBatch? @relation(fields: [batch_id], references: [id])
+
+  date                      DateTime
+  allocation_liters         Float
+  actual_consumption_liters Float
+  source                    String
+  cost_per_liter            Float
+  total_cost                Float
+  notes                     String?
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@index([room_id])
+  @@index([batch_id])
+  @@map("water_usages")
+}
+
+model UtilityMeter {
+  id           String  @id @default(uuid()) @db.Uuid
+  farm_id      String  @db.Uuid
+  farm         Farm    @relation(fields: [farm_id], references: [id])
+  meter_name   String
+  meter_number String
+  room_id      String? @db.Uuid
+  room         Room?   @relation(fields: [room_id], references: [id])
+  status       String  @default("ACTIVE") // ACTIVE, INACTIVE, MAINTENANCE
+
+  electricity_usages ElectricityUsage[]
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@unique([farm_id, meter_number])
+  @@index([farm_id])
+  @@map("utility_meters")
+}
+
+model ElectricityUsage {
+  id       String       @id @default(uuid()) @db.Uuid
+  farm_id  String       @db.Uuid
+  farm     Farm         @relation(fields: [farm_id], references: [id])
+  meter_id String       @db.Uuid
+  meter    UtilityMeter @relation(fields: [meter_id], references: [id])
+  room_id  String       @db.Uuid
+  room     Room         @relation(fields: [room_id], references: [id])
+
+  date           DateTime
+  units_consumed Float
+  cost_per_unit  Float
+  total_cost     Float
+  equipment_type String
+  notes          String?
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  last_modified DateTime  @default(now()) @updatedAt
+  sync_status   String    @default("PENDING")
+
+  @@index([farm_id])
+  @@index([meter_id])
+  @@index([room_id])
+  @@map("electricity_usages")
+}
+
+// --- Phase 4: Slaughter & Inventory Management ---
+
+model SlaughterRecord {
+  id                   String  @id @default(uuid()) @db.Uuid
+  farm_id              String  @db.Uuid
+  farm                 Farm    @relation(fields: [farm_id], references: [id])
+  batch_id             String  @db.Uuid
+  batch                AnimalBatch @relation(fields: [batch_id], references: [id])
+  
+  slaughter_date       DateTime
+  quantity_slaughtered Int
+  average_live_weight  Float
+  total_live_weight    Float
+  notes                String?
+
+  slaughterYield       SlaughterYield?
+  wasteRecord          WasteRecord?
+  inventoryItems       InventoryItem[]
+
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  deleted_at           DateTime?
+  last_modified        DateTime  @default(now()) @updatedAt
+  sync_status          String    @default("PENDING")
+
+  @@index([farm_id])
+  @@index([batch_id])
+  @@map("slaughter_records")
+}
+
+model SlaughterYield {
+  id                  String  @id @default(uuid()) @db.Uuid
+  slaughter_record_id String  @unique @db.Uuid
+  slaughter_record    SlaughterRecord @relation(fields: [slaughter_record_id], references: [id])
+  
+  carcass_weight      Float
+  usable_meat_weight  Float
+  yield_percentage    Float
+
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+  last_modified       DateTime  @default(now()) @updatedAt
+  sync_status         String    @default("PENDING")
+
+  @@map("slaughter_yields")
+}
+
+model WasteRecord {
+  id                  String  @id @default(uuid()) @db.Uuid
+  slaughter_record_id String  @unique @db.Uuid
+  slaughter_record    SlaughterRecord @relation(fields: [slaughter_record_id], references: [id])
+  
+  bones_weight        Float
+  fat_weight          Float
+  organ_weight        Float
+  waste_weight        Float
+  notes               String?
+  total_waste         Float
+
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+  last_modified       DateTime  @default(now()) @updatedAt
+  sync_status         String    @default("PENDING")
+
+  @@map("waste_records")
+}
+
+model InventoryItem {
+  id                  String  @id @default(uuid()) @db.Uuid
+  farm_id             String  @db.Uuid
+  farm                Farm    @relation(fields: [farm_id], references: [id])
+  
+  name                String
+  category            String
+  quantity            Float
+  unit                String
+  cost_basis          Float
+  
+  source_slaughter_id String? @db.Uuid
+  source_slaughter    SlaughterRecord? @relation(fields: [source_slaughter_id], references: [id])
+
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+  last_modified       DateTime  @default(now()) @updatedAt
+  sync_status         String    @default("PENDING")
+
+  @@unique([farm_id, name])
+  @@index([farm_id])
+  @@index([source_slaughter_id])
+  @@map("inventory_items")
 }

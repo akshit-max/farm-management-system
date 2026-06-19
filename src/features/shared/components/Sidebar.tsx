@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog } from 'lucide-react';
+import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog, Package } from 'lucide-react';
 
 export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollapsed?: boolean; userRole?: string }) {
   const pathname = usePathname();
@@ -17,10 +17,13 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
     { name: 'Stages', icon: Activity, href: '/dashboard/stages', show: true },
     { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms', show: true },
     { name: 'Batches', icon: Layers, href: '/dashboard/animal-batches', show: true },
+    { name: 'Slaughter', icon: Activity, href: '/dashboard/slaughter', show: isManager || isAccountant },
+    { name: 'Meat Inventory', icon: Package, href: '/dashboard/inventory', show: isManager || isAccountant },
     { name: 'Feed Types', icon: FileText, href: '/dashboard/feed-types', show: true },
     { name: 'Feed Consumption', icon: Activity, href: '/dashboard/feed-consumption', show: true },
-    { name: 'Water Management', icon: Droplets, href: '/dashboard/water', show: true },
-    { name: 'Electricity Manager', icon: Zap, href: '/dashboard/electricity', show: true },
+    { name: 'Water Usage', icon: Droplets, href: '/dashboard/water-usage', show: true },
+    { name: 'Utility Meters', icon: Zap, href: '/dashboard/utility-meters', show: true },
+    { name: 'Electricity Usage', icon: Activity, href: '/dashboard/electricity-usage', show: true },
     { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales', show: isManager || isAccountant },
     { name: 'Accounts', icon: BookOpen, href: '/dashboard/accounts', show: isOwner || isAccountant },
     { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager || isAccountant },

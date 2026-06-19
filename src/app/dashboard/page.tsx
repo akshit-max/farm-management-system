@@ -1,5 +1,5 @@
 import { OverviewAnalytics } from "@/features/dashboard/components/OverviewAnalytics";
-import { ArrowUpRight, ArrowDownRight, Droplets, Zap, Activity, Users, FileText, IndianRupee, Layers, ShieldPlus, Cloud, Sun, Leaf, TrendingUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Droplets, Zap, Activity, Users, FileText, IndianRupee, Layers, ShieldPlus, Cloud, Sun, Leaf, TrendingUp, Package } from "lucide-react";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 
@@ -26,6 +26,12 @@ export default async function DashboardPage() {
   let monthlyRevenue = 0;
   let pendingPayments = 0;
   let paidInvoicesCount = 0;
+  let todayWaterUsage = 0;
+  let todayElectricityUsage = 0;
+  let totalInventoryCount = 0;
+  let totalInventoryQty = 0;
+  let slaughteredToday = 0;
+  let avgYield = 0;
   let isOffline = false;
 
   try {
@@ -59,7 +65,19 @@ export default async function DashboardPage() {
       }),
       db.salesInvoice.findMany({
         where: { farm_id: farmId, deleted_at: null }
-      })
+      }),
+      db.waterUsage.aggregate({
+        _sum: { actual_consumption_liters: true },
+        where: { farm_id: farmId, deleted_at: null, date: { gte: new Date(new Date().setHours(0,0,0,0)) } }
+      }),
+      db.electricityUsage.aggregate({
+        _sum: { units_consumed: true },
+        where: { farm_id: farmId, deleted_at: null, date: { gte: new Date(new Date().setHours(0,0,0,0)) } }
+      }),
+      db.inventoryItem.count({ where: { farm_id: farmId, deleted_at: null } }),
+      db.inventoryItem.aggregate({ _sum: { quantity: true }, where: { farm_id: farmId, deleted_at: null } }),
+      db.slaughterRecord.aggregate({ _sum: { quantity_slaughtered: true }, where: { farm_id: farmId, deleted_at: null, slaughter_date: { gte: new Date(new Date().setHours(0,0,0,0)) } } }),
+      db.slaughterYield.aggregate({ _avg: { yield_percentage: true }, where: { slaughter_record: { farm_id: farmId, deleted_at: null } } })
     ]);
     totalBatches = tb;
     animalSum = as as any;
@@ -72,7 +90,15 @@ export default async function DashboardPage() {
     feedTypes = fTypes as any;
     todayFeedConsumption = (fConsum as any)?._sum?.quantity_kg || 0;
     
-    const sales = salesData as any[];
+    todayWaterUsage = (salesData as any)[1]?._sum?.actual_consumption_liters || 0;
+    todayElectricityUsage = (salesData as any)[2]?._sum?.units_consumed || 0;
+    
+    totalInventoryCount = (salesData as any)[3] || 0;
+    totalInventoryQty = (salesData as any)[4]?._sum?.quantity || 0;
+    slaughteredToday = (salesData as any)[5]?._sum?.quantity_slaughtered || 0;
+    avgYield = (salesData as any)[6]?._avg?.yield_percentage || 0;
+    
+    const sales = (salesData as any)[0] as any[];
     const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
     const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
     
@@ -117,6 +143,10 @@ export default async function DashboardPage() {
     { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
     { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: FileText, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },
     { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
+    { label: "Today's Water", value: `${todayWaterUsage.toLocaleString()} L`, sub: "Consumption", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Today's Power", value: `${todayElectricityUsage.toLocaleString()} kWh`, sub: "Electricity", icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
+    { label: "Inventory Qty", value: `${totalInventoryQty.toLocaleString()}`, sub: `${totalInventoryCount} items`, icon: Package, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "Processed Today", value: slaughteredToday.toString(), sub: `Avg Yield: ${avgYield.toFixed(1)}%`, icon: Activity, color: "text-rose-500", bg: "bg-rose-50" },
     { label: "Today's Revenue", value: `₹${todayRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Monthly: ₹${monthlyRevenue.toLocaleString()}`, icon: IndianRupee, color: "text-brand-primary", bg: "bg-brand-primary/10" },
   ];
 
