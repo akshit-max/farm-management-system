@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Hexagon, Loader2, Mail, ArrowLeft } from "lucide-react";
+import { Tractor, Loader2, Mail, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
         <div className="p-8 sm:p-10 space-y-8">
           <div className="flex justify-center mb-2">
             <div className="bg-[var(--color-brand-primary)] p-3 rounded-xl flex items-center justify-center shadow-md">
-              <Hexagon className="text-white w-8 h-8 stroke-[1.5]" />
+              <Tractor className="text-white w-8 h-8 stroke-[1.5]" />
             </div>
           </div>
           

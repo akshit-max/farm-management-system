@@ -2,6 +2,7 @@
 
 import { Search, Bell, LogOut, ChevronDown, MapPin, Menu } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
+import { InstallPWA } from './InstallPWA';
 
 export function Navbar({ toggleSidebar }: { toggleSidebar?: () => void }) {
   const { data: session } = useSession();
@@ -30,6 +31,7 @@ export function Navbar({ toggleSidebar }: { toggleSidebar?: () => void }) {
       </div>
       
       <div className="flex items-center gap-3 md:gap-5">
+        <InstallPWA />
         <div className="hidden md:flex relative group mr-2">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-brand-primary transition-colors" />
           <input 

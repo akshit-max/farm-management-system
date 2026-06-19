@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Hexagon, Loader2, Mail, Lock, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Tractor, Loader2, Mail, Lock, CheckCircle2, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -51,7 +51,7 @@ export default function LoginPage() {
         <div className="relative z-10 p-12 flex flex-col h-full">
           <div className="flex items-center gap-3 mb-auto">
             <div className="bg-transparent rounded flex items-center justify-center">
-              <Hexagon className="text-white w-10 h-10 stroke-[1.5]" />
+              <Tractor className="text-white w-10 h-10 stroke-[1.5]" />
             </div>
             <span className="text-white text-3xl font-bold tracking-wide">Farm ERP</span>
           </div>
@@ -89,6 +89,9 @@ export default function LoginPage() {
 
       {/* Right side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-24 bg-white relative">
+        <Link href="/" className="absolute top-6 right-6 lg:top-8 lg:right-8 p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
+          <X className="w-6 h-6" />
+        </Link>
         <div className="w-full max-w-[420px] space-y-8">
           <div className="text-left">
             <h2 className="text-3xl font-bold text-text-heading mb-2">Welcome Back</h2>

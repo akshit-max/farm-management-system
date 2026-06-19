@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Hexagon, Layers, Plus, UserCog } from 'lucide-react';
+import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog } from 'lucide-react';
 
 export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollapsed?: boolean; userRole?: string }) {
   const pathname = usePathname();
@@ -34,7 +34,7 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
     <aside className={`bg-[var(--color-brand-sidebar)] text-gray-300 flex flex-col h-full overflow-y-auto transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[260px] hidden md:flex'}`}>
       <div className={`h-[70px] px-6 flex items-center border-b border-[#0a3128] ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
         <div className="bg-transparent rounded flex items-center justify-center shrink-0">
-          <Hexagon className="text-white w-7 h-7 stroke-[1.5]" />
+          <Tractor className="text-white w-7 h-7 stroke-[1.5]" />
         </div>
         {!isCollapsed && <span className="text-white text-xl font-bold tracking-wide whitespace-nowrap">Farm ERP</span>}
       </div>
