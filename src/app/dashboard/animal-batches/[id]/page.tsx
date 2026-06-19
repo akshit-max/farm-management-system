@@ -146,7 +146,7 @@ export default function BatchDetailsPage() {
             <div><p className="text-sm text-gray-500">Current Quantity</p><p className="font-semibold text-xl text-emerald-600">{batch.quantity}</p></div>
             <div><p className="text-sm text-gray-500">Arrival Date</p><p className="font-semibold">{format(new Date(batch.arrival_date), "PP")}</p></div>
             <div><p className="text-sm text-gray-500">Avg Weight</p><p className="font-semibold">{batch.average_weight} kg</p></div>
-            <div><p className="text-sm text-gray-500">Cost per Animal</p><p className="font-semibold">${batch.cost_per_animal}</p></div>
+            <div><p className="text-sm text-gray-500">Cost per Animal</p><p className="font-semibold">₹{batch.cost_per_animal}</p></div>
             <div><p className="text-sm text-gray-500">Status</p><span className="inline-flex px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">{batch.status}</span></div>
           </div>
         </div>

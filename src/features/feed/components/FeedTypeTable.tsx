@@ -68,7 +68,7 @@ export function FeedTypeTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
     }),
     columnHelper.accessor("cost_per_kg", { 
       header: "Cost/kg",
-      cell: (info) => `$${Number(info.getValue()).toFixed(2)}`
+      cell: (info) => `₹${Number(info.getValue()).toFixed(2)}`
     }),
     columnHelper.accessor("stock_quantity", { 
       header: "Current Stock",

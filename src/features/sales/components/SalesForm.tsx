@@ -163,7 +163,7 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
                   <input type="number" {...register(`items.${index}.quantity` as never)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary text-sm" />
                 </div>
                 <div className="w-full md:w-40">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Rate ($) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Rate (₹) <span className="text-red-500">*</span></label>
                   <input type="number" step="0.01" {...register(`items.${index}.unit_price` as never)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary text-sm" />
                 </div>
                 <div className="w-full md:w-auto flex justify-end">
@@ -180,7 +180,7 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
         <div className="text-lg text-gray-800">
-          Total Amount: <span className="font-bold text-brand-primary">${calculateTotal().toFixed(2)}</span>
+          Total Amount: <span className="font-bold text-brand-primary">₹{calculateTotal().toFixed(2)}</span>
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onCancel}>

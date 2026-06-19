@@ -74,15 +74,15 @@ export default function SalesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col">
             <span className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Total Revenue</span>
-            <span className="text-2xl font-bold text-gray-900">${metrics.total.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-gray-900">₹{metrics.total.toFixed(2)}</span>
           </div>
-          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-            <span className="text-xs text-amber-500 font-medium uppercase tracking-wider mb-1">Pending Revenue</span>
-            <span className="text-2xl font-bold text-gray-900">${metrics.pending.toFixed(2)}</span>
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+            <span className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-2">Pending Revenue</span>
+            <span className="text-2xl font-bold text-gray-900">₹{metrics.pending.toFixed(2)}</span>
           </div>
-          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-            <span className="text-xs text-emerald-500 font-medium uppercase tracking-wider mb-1">Paid Revenue</span>
-            <span className="text-2xl font-bold text-gray-900">${metrics.paid.toFixed(2)}</span>
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+            <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2">Paid Revenue</span>
+            <span className="text-2xl font-bold text-gray-900">₹{metrics.paid.toFixed(2)}</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col">
             <span className="text-xs text-blue-500 font-medium uppercase tracking-wider mb-1">Total Invoices</span>

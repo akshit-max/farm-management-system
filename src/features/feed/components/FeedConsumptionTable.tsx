@@ -59,7 +59,7 @@ export function FeedConsumptionTable({ keyIndex }: { keyIndex: number }) {
     }),
     columnHelper.accessor("cost", { 
       header: "Cost",
-      cell: (info) => `$${Number(info.getValue()).toFixed(2)}`
+      cell: (info) => `₹${Number(info.getValue()).toFixed(2)}`
     }),
     columnHelper.accessor("notes", { 
       header: "Notes",

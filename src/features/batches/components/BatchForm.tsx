@@ -208,7 +208,7 @@ export function BatchForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
           <input type="number" step="0.01" min={0} {...register("average_weight")} className="w-full px-3 py-2 border rounded-md" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cost Per Animal ($)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Cost Per Animal (₹)</label>
           <input type="number" step="0.01" min={0} {...register("cost_per_animal")} className="w-full px-3 py-2 border rounded-md" />
         </div>
       </div>

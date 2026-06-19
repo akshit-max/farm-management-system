@@ -1,5 +1,5 @@
 import { OverviewAnalytics } from "@/features/dashboard/components/OverviewAnalytics";
-import { ArrowUpRight, ArrowDownRight, Droplets, Zap, Activity, Users, FileText, DollarSign, Layers, ShieldPlus, Cloud, Sun, Leaf, TrendingUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Droplets, Zap, Activity, Users, FileText, IndianRupee, Layers, ShieldPlus, Cloud, Sun, Leaf, TrendingUp } from "lucide-react";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
     { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
     { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: FileText, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },
     { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
-    { label: "Today's Revenue", value: `$${todayRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Monthly: $${monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: "text-brand-primary", bg: "bg-brand-primary/10" },
+    { label: "Today's Revenue", value: `₹${todayRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Monthly: ₹${monthlyRevenue.toLocaleString()}`, icon: IndianRupee, color: "text-brand-primary", bg: "bg-brand-primary/10" },
   ];
 
   return (

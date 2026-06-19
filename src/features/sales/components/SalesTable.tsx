@@ -82,7 +82,7 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
     }),
     columnHelper.accessor("total", {
       header: "Amount",
-      cell: (info) => <div className="font-bold text-emerald-600">${Number(info.getValue()).toFixed(2)}</div>
+      cell: (info) => <div className="font-bold text-emerald-600">₹{Number(info.getValue()).toFixed(2)}</div>
     }),
     columnHelper.accessor("payment_status", {
       header: "Payment",
