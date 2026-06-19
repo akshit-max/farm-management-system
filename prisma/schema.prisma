@@ -95,6 +95,8 @@ model Farm {
   electricityUsages ElectricityUsage[]
   slaughterRecords  SlaughterRecord[]
   inventoryItems    InventoryItem[]
+  expenses          Expense[]
+  customerPayments  CustomerPayment[]
 
   @@map("farms")
 }
@@ -337,6 +339,7 @@ model Customer {
   status         String  @default("ACTIVE")
 
   sales_invoices SalesInvoice[]
+  payments       CustomerPayment[]
 
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
@@ -419,6 +422,7 @@ model SalesInvoice {
   notes          String?
 
   items SalesInvoiceItem[]
+  payments CustomerPayment[]
 
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
@@ -628,4 +632,55 @@ model InventoryItem {
   @@index([farm_id])
   @@index([source_slaughter_id])
   @@map("inventory_items")
+}
+
+// --- Phase 5: Accounting & Receivables ---
+
+model Expense {
+  id             String  @id @default(uuid()) @db.Uuid
+  farm_id        String  @db.Uuid
+  farm           Farm    @relation(fields: [farm_id], references: [id])
+  
+  expense_date   DateTime
+  category       String
+  description    String
+  amount         Float
+  notes          String?
+  created_by     String  @db.Uuid
+
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+  last_modified  DateTime  @default(now()) @updatedAt
+  sync_status    String    @default("PENDING")
+
+  @@index([farm_id])
+  @@map("expenses")
+}
+
+model CustomerPayment {
+  id               String  @id @default(uuid()) @db.Uuid
+  farm_id          String  @db.Uuid
+  farm             Farm    @relation(fields: [farm_id], references: [id])
+  customer_id      String  @db.Uuid
+  customer         Customer @relation(fields: [customer_id], references: [id])
+  invoice_id       String  @db.Uuid
+  invoice          SalesInvoice @relation(fields: [invoice_id], references: [id])
+  
+  payment_date     DateTime
+  amount           Float
+  payment_method   String
+  reference_number String?
+  notes            String?
+
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime?
+  last_modified    DateTime  @default(now()) @updatedAt
+  sync_status      String    @default("PENDING")
+
+  @@index([farm_id])
+  @@index([customer_id])
+  @@index([invoice_id])
+  @@map("customer_payments")
 }

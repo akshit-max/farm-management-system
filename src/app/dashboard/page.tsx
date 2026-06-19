@@ -32,6 +32,12 @@ export default async function DashboardPage() {
   let totalInventoryQty = 0;
   let slaughteredToday = 0;
   let avgYield = 0;
+  
+  let allTimeRevenue = 0;
+  let totalExpenses = 0;
+  let netProfit = 0;
+  let totalReceivables = 0;
+  
   let isOffline = false;
 
   try {
@@ -77,7 +83,14 @@ export default async function DashboardPage() {
       db.inventoryItem.count({ where: { farm_id: farmId, deleted_at: null } }),
       db.inventoryItem.aggregate({ _sum: { quantity: true }, where: { farm_id: farmId, deleted_at: null } }),
       db.slaughterRecord.aggregate({ _sum: { quantity_slaughtered: true }, where: { farm_id: farmId, deleted_at: null, slaughter_date: { gte: new Date(new Date().setHours(0,0,0,0)) } } }),
-      db.slaughterYield.aggregate({ _avg: { yield_percentage: true }, where: { slaughter_record: { farm_id: farmId, deleted_at: null } } })
+      db.slaughterYield.aggregate({ _avg: { yield_percentage: true }, where: { slaughter_record: { farm_id: farmId, deleted_at: null } } }),
+      
+      // Phase 5: Accounting Engine
+      db.expense.aggregate({ _sum: { amount: true }, where: { farm_id: farmId, deleted_at: null } }),
+      db.feedConsumption.aggregate({ _sum: { cost: true }, where: { farm_id: farmId, deleted_at: null } }),
+      db.waterUsage.aggregate({ _sum: { total_cost: true }, where: { farm_id: farmId, deleted_at: null } }),
+      db.electricityUsage.aggregate({ _sum: { total_cost: true }, where: { farm_id: farmId, deleted_at: null } }),
+      db.customerPayment.aggregate({ _sum: { amount: true }, where: { farm_id: farmId, deleted_at: null } })
     ]);
     totalBatches = tb;
     animalSum = as as any;
@@ -103,11 +116,23 @@ export default async function DashboardPage() {
     const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
     
     sales.forEach(inv => {
+      allTimeRevenue += inv.total;
       if (new Date(inv.invoice_date) >= startOfToday) todayRevenue += inv.total;
       if (new Date(inv.invoice_date) >= startOfMonth) monthlyRevenue += inv.total;
       if (inv.payment_status === "PENDING" || inv.payment_status === "PARTIAL") pendingPayments += inv.total;
       if (inv.payment_status === "PAID") paidInvoicesCount++;
     });
+
+    const manualExp = (salesData as any)[7]?._sum?.amount || 0;
+    const feedExp = (salesData as any)[8]?._sum?.cost || 0;
+    const waterExp = (salesData as any)[9]?._sum?.total_cost || 0;
+    const elecExp = (salesData as any)[10]?._sum?.total_cost || 0;
+    const totalPayments = (salesData as any)[11]?._sum?.amount || 0;
+
+    totalExpenses = manualExp + feedExp + waterExp + elecExp;
+    netProfit = allTimeRevenue - totalExpenses;
+    totalReceivables = allTimeRevenue - totalPayments;
+
   } catch (err) {
     console.error("Database connection error (Offline Mode):", err);
     isOffline = true;
@@ -145,9 +170,10 @@ export default async function DashboardPage() {
     { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
     { label: "Today's Water", value: `${todayWaterUsage.toLocaleString()} L`, sub: "Consumption", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "Today's Power", value: `${todayElectricityUsage.toLocaleString()} kWh`, sub: "Electricity", icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Inventory Qty", value: `${totalInventoryQty.toLocaleString()}`, sub: `${totalInventoryCount} items`, icon: Package, color: "text-indigo-500", bg: "bg-indigo-50" },
-    { label: "Processed Today", value: slaughteredToday.toString(), sub: `Avg Yield: ${avgYield.toFixed(1)}%`, icon: Activity, color: "text-rose-500", bg: "bg-rose-50" },
-    { label: "Today's Revenue", value: `₹${todayRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Monthly: ₹${monthlyRevenue.toLocaleString()}`, icon: IndianRupee, color: "text-brand-primary", bg: "bg-brand-primary/10" },
+    { label: "Total Revenue", value: `₹${allTimeRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Today: ₹${todayRevenue.toLocaleString()}`, icon: IndianRupee, color: "text-brand-primary", bg: "bg-brand-primary/10" },
+    { label: "Total Expenses", value: `₹${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: "All time", icon: TrendingUp, color: "text-status-danger", bg: "bg-status-danger/10" },
+    { label: "Net Profit", value: `₹${netProfit.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: "Overall", icon: Activity, color: netProfit >= 0 ? "text-emerald-500" : "text-status-danger", bg: netProfit >= 0 ? "bg-emerald-50" : "bg-status-danger/10" },
+    { label: "Receivables", value: `₹${totalReceivables.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: "Outstanding", icon: FileText, color: "text-amber-500", bg: "bg-amber-50" },
   ];
 
   return (

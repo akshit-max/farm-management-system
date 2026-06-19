@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Trash2, Search, Edit, Phone, Mail } from "lucide-react";
+import { Trash2, Search, Edit, Phone, Mail, BookOpen } from "lucide-react";
+import Link from "next/link";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 import { useRBAC } from "@/lib/rbac-client";
 import { Button } from "@/components/ui/Button";
@@ -99,7 +100,10 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
       header: "Actions",
       cell: (info) => (
         <div className="flex items-center gap-2">
-          <button onClick={() => onEdit?.(info.row.original)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors">
+          <Link href={`/dashboard/customers/${info.row.original.id}`} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="View Ledger">
+            <BookOpen className="w-4 h-4" />
+          </Link>
+          <button onClick={() => onEdit?.(info.row.original)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
           <button onClick={() => setDeleteId(info.row.original.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">

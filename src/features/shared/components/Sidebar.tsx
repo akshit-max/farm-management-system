@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog, Package } from 'lucide-react';
+import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog, Package, TrendingUp } from 'lucide-react';
 
 export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollapsed?: boolean; userRole?: string }) {
   const pathname = usePathname();
@@ -24,10 +24,13 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
     { name: 'Water Usage', icon: Droplets, href: '/dashboard/water-usage', show: true },
     { name: 'Utility Meters', icon: Zap, href: '/dashboard/utility-meters', show: true },
     { name: 'Electricity Usage', icon: Activity, href: '/dashboard/electricity-usage', show: true },
+    { name: 'Expenses', icon: FileText, href: '/dashboard/expenses', show: true },
     { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales', show: isManager || isAccountant },
     { name: 'Accounts', icon: BookOpen, href: '/dashboard/accounts', show: isOwner || isAccountant },
     { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager || isAccountant },
     { name: 'CRM (Customers)', icon: Users, href: '/dashboard/customers', show: isManager || isAccountant },
+    { name: 'Profit & Loss', icon: TrendingUp, href: '/dashboard/reports/pl', show: isManager || isAccountant },
+    { name: 'Cost Analytics', icon: LineChart, href: '/dashboard/reports/analytics', show: isManager || isAccountant },
     { name: 'Reports & Analytics', icon: LineChart, href: '/dashboard/reports', show: isManager || isAccountant },
     { name: 'User Management', icon: UserCog, href: '/dashboard/users', show: isOwner },
     { name: 'Settings', icon: Settings, href: '/dashboard/settings', show: true },
