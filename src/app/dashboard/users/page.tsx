@@ -7,6 +7,7 @@ import { Users, Plus, Pencil, Trash2, ShieldCheck, ToggleLeft, ToggleRight, Load
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 const ROLE_COLORS: Record<string, string> = {
   Owner: "bg-purple-100 text-purple-700",
@@ -30,6 +31,7 @@ export default function UserManagementPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [editRoleId, setEditRoleId] = useState("");
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
     resolver: zodResolver(createSchema),
@@ -88,16 +90,18 @@ export default function UserManagementPage() {
     }
   };
 
-  const deleteUser = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to remove ${name}? This cannot be undone.`)) return;
+  const deleteUser = async () => {
+    if (!userToDelete) return;
     try {
-      const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/users/${userToDelete.id}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) throw new Error(typeof json.error === "string" ? json.error : "Failed to delete user");
       toast.success("User removed");
       fetchData();
     } catch (err: any) {
       toast.error(err.message || "Something went wrong");
+    } finally {
+      setUserToDelete(null);
     }
   };
 
@@ -236,7 +240,7 @@ export default function UserManagementPage() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => deleteUser(user.id, user.name)}
+                            onClick={() => setUserToDelete({ id: user.id, name: user.name })}
                             className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Remove User"
                           >
@@ -260,6 +264,14 @@ export default function UserManagementPage() {
           </table>
         )}
       </div>
+
+      <ConfirmModal 
+        isOpen={!!userToDelete}
+        title="Remove User"
+        message={`Are you sure you want to remove ${userToDelete?.name}? This cannot be undone.`}
+        onConfirm={deleteUser}
+        onCancel={() => setUserToDelete(null)}
+      />
     </div>
   );
 }

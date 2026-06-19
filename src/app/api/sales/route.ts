@@ -15,9 +15,12 @@ const createSalesSchema = z.object({
   customer_id: z.string().min(1, "Customer is required"),
   invoice_date: z.string().min(1, "Date is required"),
   invoice_number: z.string().min(1, "Invoice number is required"),
-  payment_status: z.enum(["PENDING", "PARTIAL", "PAID"]).default("PENDING"),
   notes: z.string().optional(),
   items: z.array(itemSchema).min(1, "At least one item is required"),
+  payment_received: z.boolean().default(false),
+  amount_paid: z.coerce.number().min(0).optional(),
+  payment_method: z.string().optional(),
+  reference_number: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -97,6 +100,18 @@ export async function POST(req: NextRequest) {
         totalAmount += item.quantity * item.unit_price;
       }
 
+      let paymentStatus = "PENDING";
+      if (parsedData.payment_received && parsedData.amount_paid && parsedData.amount_paid > 0) {
+        if (parsedData.amount_paid > totalAmount + 0.01) {
+          throw new Error(`Amount paid (${parsedData.amount_paid}) cannot exceed invoice total (${totalAmount})`);
+        }
+        if (Math.abs(totalAmount - parsedData.amount_paid) < 0.01) {
+          paymentStatus = "PAID";
+        } else {
+          paymentStatus = "PARTIAL";
+        }
+      }
+
       // 2. Create Invoice
       const invoice = await tx.salesInvoice.create({
         data: {
@@ -105,7 +120,7 @@ export async function POST(req: NextRequest) {
           invoice_number: parsedData.invoice_number,
           invoice_date: new Date(parsedData.invoice_date),
           total: totalAmount,
-          payment_status: parsedData.payment_status,
+          payment_status: paymentStatus,
           notes: parsedData.notes,
           items: {
             create: parsedData.items.map(item => ({
@@ -117,6 +132,22 @@ export async function POST(req: NextRequest) {
           }
         }
       });
+
+      // 3. Create initial payment if applicable
+      if (parsedData.payment_received && parsedData.amount_paid && parsedData.amount_paid > 0) {
+        await tx.customerPayment.create({
+          data: {
+            farm_id: farmId,
+            customer_id: parsedData.customer_id,
+            invoice_id: invoice.id,
+            payment_date: new Date(parsedData.invoice_date),
+            amount: parsedData.amount_paid,
+            payment_method: parsedData.payment_method || "Cash",
+            reference_number: parsedData.reference_number || "",
+            notes: "Initial payment recorded during invoice creation."
+          }
+        });
+      }
 
       // 3. Deduct quantities
       for (const item of parsedData.items) {

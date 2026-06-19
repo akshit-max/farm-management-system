@@ -8,7 +8,7 @@ import { z } from "zod";
 const createUtilityMeterSchema = z.object({
   meter_name: z.string().min(1, "Meter name is required"),
   meter_number: z.string().min(1, "Meter number is required"),
-  room_id: z.string().optional().nullable(),
+  room_id: z.string().min(1, "Linked Room is required"),
   status: z.string().default("ACTIVE"),
 });
 
@@ -40,10 +40,24 @@ export async function POST(req: NextRequest) {
     const parsedData = createUtilityMeterSchema.parse(body);
 
     const existing = await db.utilityMeter.findFirst({
-      where: { farm_id: farmId, meter_number: parsedData.meter_number, deleted_at: null },
+      where: { farm_id: farmId, meter_number: parsedData.meter_number },
     });
+    
     if (existing) {
-      return NextResponse.json({ error: "Meter with this number already exists" }, { status: 400 });
+      if (!existing.deleted_at) {
+        return NextResponse.json({ error: "Meter with this number already exists" }, { status: 400 });
+      } else {
+        // Restore soft-deleted meter
+        const restored = await db.utilityMeter.update({
+          where: { id: existing.id },
+          data: {
+            ...parsedData,
+            deleted_at: null,
+          }
+        });
+        await logAudit(session.user.id, farmId, "RESTORE", "UtilityMeter", restored.id);
+        return NextResponse.json(restored, { status: 201 });
+      }
     }
 
     const meter = await db.utilityMeter.create({
@@ -54,6 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(meter, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    return NextResponse.json({ error: "Failed to create utility meter" }, { status: 500 });
+    console.error("UTILITY METER CREATE ERROR:", error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create utility meter" }, { status: 500 });
   }
 }

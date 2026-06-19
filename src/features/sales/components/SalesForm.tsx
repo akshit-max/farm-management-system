@@ -18,13 +18,15 @@ const schema = z.object({
   customer_id: z.string().min(1, "Customer is required"),
   invoice_date: z.string().min(1, "Date is required"),
   invoice_number: z.string().min(1, "Invoice number is required"),
-  payment_status: z.enum(["PENDING", "PARTIAL", "PAID"]).default("PENDING"),
   notes: z.string().optional(),
   items: z.array(itemSchema).min(1, "At least one item is required"),
+  payment_received: z.boolean().default(false),
+  amount_paid: z.coerce.number().min(0).optional(),
+  payment_method: z.string().optional(),
+  reference_number: z.string().optional(),
 });
 
 const updateSchema = z.object({
-  payment_status: z.enum(["PENDING", "PARTIAL", "PAID"]),
   notes: z.string().optional(),
 });
 
@@ -37,15 +39,18 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
 
   const { register, handleSubmit, control, formState: { errors }, reset, watch } = useForm({
     resolver: zodResolver(isEditing ? updateSchema : schema),
-    defaultValues: isEditing ? {
-      payment_status: initialData.payment_status || "PENDING",
+    defaultValues: (isEditing ? {
       notes: initialData.notes || ""
     } : {
       customer_id: "", invoice_date: new Date().toISOString().split('T')[0],
       invoice_number: `INV-${Date.now().toString().slice(-6)}`,
-      payment_status: "PENDING", notes: "",
-      items: [{ batch_id: "", quantity: 1, unit_price: 0 }]
-    }
+      notes: "",
+      items: [{ batch_id: "", quantity: 1, unit_price: 0 }],
+      payment_received: false,
+      amount_paid: 0,
+      payment_method: "Cash",
+      reference_number: ""
+    }) as any
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -120,20 +125,45 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status <span className="text-red-500">*</span></label>
-          <select {...register("payment_status")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary">
-            <option value="PENDING">Pending</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="PAID">Paid</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
           <input {...register("notes")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary" placeholder="Optional details..." />
         </div>
       </div>
+
+      {!isEditing && (
+        <div className="pt-4 border-t border-gray-100">
+          <label className="flex items-center gap-2 mb-4 cursor-pointer w-fit">
+            <input type="checkbox" {...register("payment_received")} className="w-4 h-4 text-brand-primary border-gray-300 rounded focus:ring-brand-primary" />
+            <span className="text-sm font-medium text-gray-700">Payment Received Now?</span>
+          </label>
+          
+          {watch("payment_received") && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Amount Paid (₹) <span className="text-red-500">*</span></label>
+                <input type="number" step="0.01" {...register("amount_paid")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method <span className="text-red-500">*</span></label>
+                <select {...register("payment_method")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary text-sm">
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Card">Card</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Reference Number</label>
+                <input {...register("reference_number")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-primary focus:border-brand-primary text-sm" placeholder="UTR, Cheque No, etc." />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {!isEditing && (
         <div className="space-y-4 pt-4 border-t border-gray-100">

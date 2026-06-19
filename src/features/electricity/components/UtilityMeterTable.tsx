@@ -6,15 +6,17 @@ import { Pencil, Trash2, Search, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 
 const columnHelper = createColumnHelper<any>();
 
-export function UtilityMeterTable({ data, onEdit, onRefresh }: { data: any[]; onEdit: (u: any) => void; onRefresh: () => void }) {
+export function UtilityMeterTable({ data, onEdit, onRefresh, canMutate }: { data: any[]; onEdit: (u: any) => void; onRefresh: () => void; canMutate: boolean }) {
   const [globalFilter, setGlobalFilter] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const handleDelete = async (deleteId: string) => {
-    if (!confirm("Are you sure you want to delete this meter? It cannot be deleted if it has usage records.")) return;
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
       const res = await fetch(`/api/utility-meters/${deleteId}`, { method: "DELETE" });
       if (!res.ok) {
@@ -25,49 +27,59 @@ export function UtilityMeterTable({ data, onEdit, onRefresh }: { data: any[]; on
       onRefresh();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setDeleteId(null);
     }
   };
 
-  const columns = useMemo(() => [
-    columnHelper.accessor("meter_name", {
-      header: "Meter Name",
-      cell: (info) => <span className="font-bold text-gray-900">{info.getValue()}</span>
-    }),
-    columnHelper.accessor("meter_number", {
-      header: "Meter Number",
-      cell: (info) => <span className="text-gray-600 font-mono text-sm">{info.getValue()}</span>
-    }),
-    columnHelper.accessor("room.name", {
-      header: "Linked Room",
-      cell: (info) => <span className="text-gray-500">{info.getValue() || "Global"}</span>
-    }),
-    columnHelper.accessor("status", {
-      header: "Status",
-      cell: (info) => {
-        const status = info.getValue();
-        const colors: any = {
-          ACTIVE: "bg-emerald-100 text-emerald-800",
-          INACTIVE: "bg-gray-100 text-gray-800",
-          MAINTENANCE: "bg-amber-100 text-amber-800",
-        };
-        return <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colors[status] || "bg-gray-100 text-gray-800"}`}>{status}</span>;
-      }
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Actions",
-      cell: (info) => (
-        <div className="flex items-center gap-2">
-          <button onClick={() => onEdit(info.row.original)} className="p-1.5 text-gray-500 hover:text-brand-primary hover:bg-brand-primary/10 rounded-md transition-colors">
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button onClick={() => handleDelete(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      )
-    })
-  ], []);
+  const columns = useMemo(() => {
+    const baseColumns: any[] = [
+      columnHelper.accessor("meter_name", {
+        header: "Meter Name",
+        cell: (info) => <span className="font-bold text-gray-900">{info.getValue()}</span>
+      }),
+      columnHelper.accessor("meter_number", {
+        header: "Meter Number",
+        cell: (info) => <span className="text-gray-600 font-mono text-sm">{info.getValue()}</span>
+      }),
+      columnHelper.accessor("room.name", {
+        header: "Linked Room",
+        cell: (info) => <span className="text-gray-500">{info.getValue() || "Global"}</span>
+      }),
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: (info) => {
+          const status = info.getValue();
+          const colors: any = {
+            ACTIVE: "bg-emerald-100 text-emerald-800",
+            INACTIVE: "bg-gray-100 text-gray-800",
+            MAINTENANCE: "bg-amber-100 text-amber-800",
+          };
+          return <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colors[status] || "bg-gray-100 text-gray-800"}`}>{status}</span>;
+        }
+      }),
+    ];
+
+    if (canMutate) {
+      baseColumns.push(
+        columnHelper.display({
+          id: "actions",
+          header: "Actions",
+          cell: (info) => (
+            <div className="flex items-center gap-2">
+              <button onClick={() => onEdit(info.row.original)} className="p-1.5 text-gray-500 hover:text-brand-primary hover:bg-brand-primary/10 rounded-md transition-colors">
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button onClick={() => setDeleteId(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )
+        })
+      );
+    }
+    return baseColumns;
+  }, [canMutate]);
 
   const table = useReactTable({
     data,
@@ -144,6 +156,14 @@ export function UtilityMeterTable({ data, onEdit, onRefresh }: { data: any[]; on
           </div>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={!!deleteId}
+        title="Delete Utility Meter"
+        message="Are you sure you want to delete this meter? It cannot be deleted if it has usage records attached."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

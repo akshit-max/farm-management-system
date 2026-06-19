@@ -6,17 +6,15 @@ import { Button } from "@/components/ui/Button";
 import { PaymentForm } from "@/features/receivables/components/PaymentForm";
 import { PaymentTable } from "@/features/receivables/components/PaymentTable";
 import { toast } from "sonner";
-import { useSession } from "next-auth/react";
+import { useRBAC } from "@/lib/rbac-client";
 import { format } from "date-fns";
 
 export default function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { data: session } = useSession();
+  const { canManageCustomers } = useRBAC();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-
-  const isManager = session?.user?.role === "Manager" || session?.user?.role === "Owner" || session?.user?.role === "Accountant";
 
   const fetchLedger = async () => {
     try {
@@ -48,7 +46,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
           <h1 className="text-2xl font-bold text-gray-900">{customer.company_name}</h1>
           <p className="text-gray-500 text-sm mt-1">Customer Profile & Financial Ledger</p>
         </div>
-        {!isRecording && isManager && (
+        {!isRecording && canManageCustomers && (
           <Button onClick={() => setIsRecording(true)} className="flex items-center gap-2">
             <Plus className="w-4 h-4" /> Record Payment
           </Button>
@@ -87,7 +85,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {isRecording && isManager && (
+      {isRecording && canManageCustomers && (
         <PaymentForm 
           customerId={customer.id} 
           invoices={customer.sales_invoices} 
@@ -99,7 +97,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">Payment History</h2>
-          <PaymentTable data={customer.payments} onRefresh={fetchLedger} canMutate={isManager} />
+          <PaymentTable data={customer.payments} onRefresh={fetchLedger} canMutate={canManageCustomers} />
         </div>
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Invoices</h2>

@@ -6,16 +6,18 @@ import { Pencil, Trash2, Search, Activity } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 const columnHelper = createColumnHelper<any>();
 
-export function ElectricityUsageTable({ data, onEdit, onRefresh }: { data: any[]; onEdit: (u: any) => void; onRefresh: () => void }) {
+export function ElectricityUsageTable({ data, onEdit, onRefresh, canMutate }: { data: any[]; onEdit: (u: any) => void; onRefresh: () => void; canMutate: boolean }) {
   const [globalFilter, setGlobalFilter] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const handleDelete = async (deleteId: string) => {
-    if (!confirm("Are you sure you want to delete this electricity usage record?")) return;
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
       const res = await fetch(`/api/electricity-usage/${deleteId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
@@ -23,49 +25,59 @@ export function ElectricityUsageTable({ data, onEdit, onRefresh }: { data: any[]
       onRefresh();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setDeleteId(null);
     }
   };
 
-  const columns = useMemo(() => [
-    columnHelper.accessor("date", {
-      header: "Date",
-      cell: (info) => format(new Date(info.getValue()), "PP"),
-    }),
-    columnHelper.accessor("meter.meter_name", {
-      header: "Meter",
-      cell: (info) => <span className="font-medium text-gray-900">{info.getValue()}</span>
-    }),
-    columnHelper.accessor("room.name", {
-      header: "Room",
-      cell: (info) => <span className="text-gray-600">{info.getValue() || "-"}</span>
-    }),
-    columnHelper.accessor("equipment_type", {
-      header: "Type",
-      cell: (info) => <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">{info.getValue()}</span>
-    }),
-    columnHelper.accessor("units_consumed", {
-      header: "Consumption",
-      cell: (info) => <span className="font-bold text-amber-600">{Number(info.getValue()).toLocaleString()} kWh</span>
-    }),
-    columnHelper.accessor("total_cost", {
-      header: "Total Cost",
-      cell: (info) => <span className="font-bold text-brand-primary">₹{Number(info.getValue()).toFixed(2)}</span>
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "Actions",
-      cell: (info) => (
-        <div className="flex items-center gap-2">
-          <button onClick={() => onEdit(info.row.original)} className="p-1.5 text-gray-500 hover:text-brand-primary hover:bg-brand-primary/10 rounded-md transition-colors">
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button onClick={() => handleDelete(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      )
-    })
-  ], []);
+  const columns = useMemo(() => {
+    const baseColumns: any[] = [
+      columnHelper.accessor("date", {
+        header: "Date",
+        cell: (info) => format(new Date(info.getValue()), "PP"),
+      }),
+      columnHelper.accessor("meter.meter_name", {
+        header: "Meter",
+        cell: (info) => <span className="font-medium text-gray-900">{info.getValue()}</span>
+      }),
+      columnHelper.accessor("room.name", {
+        header: "Room",
+        cell: (info) => <span className="text-gray-600">{info.getValue() || "-"}</span>
+      }),
+      columnHelper.accessor("equipment_type", {
+        header: "Type",
+        cell: (info) => <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">{info.getValue()}</span>
+      }),
+      columnHelper.accessor("units_consumed", {
+        header: "Consumption",
+        cell: (info) => <span className="font-bold text-amber-600">{Number(info.getValue()).toLocaleString()} kWh</span>
+      }),
+      columnHelper.accessor("total_cost", {
+        header: "Total Cost",
+        cell: (info) => <span className="font-bold text-brand-primary">₹{Number(info.getValue()).toFixed(2)}</span>
+      }),
+    ];
+
+    if (canMutate) {
+      baseColumns.push(
+        columnHelper.display({
+          id: "actions",
+          header: "Actions",
+          cell: (info) => (
+            <div className="flex items-center gap-2">
+              <button onClick={() => onEdit(info.row.original)} className="p-1.5 text-gray-500 hover:text-brand-primary hover:bg-brand-primary/10 rounded-md transition-colors">
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button onClick={() => setDeleteId(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )
+        })
+      );
+    }
+    return baseColumns;
+  }, [canMutate]);
 
   const table = useReactTable({
     data,
@@ -142,6 +154,14 @@ export function ElectricityUsageTable({ data, onEdit, onRefresh }: { data: any[]
           </div>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={!!deleteId}
+        title="Delete Electricity Record"
+        message="Are you sure you want to delete this electricity usage record? This action cannot be undone."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

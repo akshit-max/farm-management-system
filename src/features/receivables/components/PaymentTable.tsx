@@ -5,14 +5,18 @@ import { useMemo } from "react";
 import { Trash2, IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useState } from "react";
 
 const columnHelper = createColumnHelper<any>();
 
 export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRefresh: () => void; canMutate: boolean }) {
-  const handleDelete = async (deleteId: string) => {
-    if (!confirm("Are you sure you want to delete this payment? This will revert the invoice status.")) return;
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
       const res = await fetch(`/api/customer-payments/${deleteId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
@@ -20,6 +24,8 @@ export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRe
       onRefresh();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -50,7 +56,7 @@ export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRe
           header: "Actions",
           cell: (info) => (
             <div className="flex items-center gap-2">
-              <button onClick={() => handleDelete(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+              <button onClick={() => setDeleteId(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -120,6 +126,14 @@ export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRe
           </div>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={!!deleteId}
+        title="Delete Payment"
+        message="Are you sure you want to delete this payment? This will revert the invoice status."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

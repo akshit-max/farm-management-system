@@ -40,9 +40,11 @@ const schema = z.object({
 
 export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
   const [batches, setBatches] = useState<any[]>([]);
+  const [existingItems, setExistingItems] = useState<any[]>([]);
+  const [customModes, setCustomModes] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, control, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       slaughter_date: new Date().toISOString().split('T')[0],
@@ -61,6 +63,11 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
       .then(res => res.json())
       .then(data => setBatches(data.data || []))
       .catch(() => toast.error("Failed to load batches"));
+
+    fetch("/api/inventory-items")
+      .then(res => res.json())
+      .then(data => setExistingItems(data.data || []))
+      .catch(() => console.error("Failed to load inventory items"));
   }, []);
 
   const onSubmit = async (data: any) => {
@@ -166,7 +173,42 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
             <div key={field.id} className="flex flex-wrap md:flex-nowrap items-start gap-4 p-4 border border-gray-100 rounded-lg bg-gray-50/50">
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Product Name</label>
-                <Input {...register(`inventory_items.${index}.name`)} placeholder="e.g. Whole Chicken" error={(errors.inventory_items?.[index] as any)?.name?.message} />
+                {customModes[index] ? (
+                  <div className="flex gap-2">
+                    <Input {...register(`inventory_items.${index}.name`)} placeholder="e.g. Whole Chicken" error={(errors.inventory_items?.[index] as any)?.name?.message} />
+                    <Button type="button" variant="outline" className="px-2" onClick={() => setCustomModes(prev => ({ ...prev, [index]: false }))}>
+                      <Trash2 className="w-4 h-4 text-gray-500" />
+                    </Button>
+                  </div>
+                ) : (
+                  <select
+                    className={`w-full h-10 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 ${((errors.inventory_items?.[index] as any)?.name) ? "border-red-500" : "border-gray-200"}`}
+                    value={watch(`inventory_items.${index}.name`) || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "CUSTOM") {
+                        setCustomModes(prev => ({ ...prev, [index]: true }));
+                        setValue(`inventory_items.${index}.name`, "");
+                        setValue(`inventory_items.${index}.category`, "Meat");
+                        setValue(`inventory_items.${index}.unit`, "kg");
+                      } else {
+                        const item = existingItems.find(i => i.name === val);
+                        if (item) {
+                          setValue(`inventory_items.${index}.name`, item.name);
+                          setValue(`inventory_items.${index}.category`, item.category);
+                          setValue(`inventory_items.${index}.unit`, item.unit);
+                        }
+                      }
+                    }}
+                  >
+                    <option value="" disabled>Select Item</option>
+                    {existingItems.map(item => (
+                      <option key={item.id} value={item.name}>{item.name}</option>
+                    ))}
+                    <option value="CUSTOM" className="font-semibold text-brand-primary">+ Custom Item</option>
+                  </select>
+                )}
+                {((errors.inventory_items?.[index] as any)?.name && !customModes[index]) && <p className="text-red-500 text-xs mt-1">{(errors.inventory_items?.[index] as any)?.name?.message}</p>}
               </div>
               <div className="w-full md:w-40">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>

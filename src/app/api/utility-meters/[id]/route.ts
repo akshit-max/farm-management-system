@@ -8,7 +8,7 @@ import { z } from "zod";
 const updateUtilityMeterSchema = z.object({
   meter_name: z.string().min(1, "Meter name is required"),
   meter_number: z.string().min(1, "Meter number is required"),
-  room_id: z.string().optional().nullable(),
+  room_id: z.string().min(1, "Linked Room is required"),
   status: z.string().default("ACTIVE"),
 });
 
@@ -29,10 +29,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const parsedData = updateUtilityMeterSchema.parse(body);
 
     const duplicateCheck = await db.utilityMeter.findFirst({
-      where: { farm_id: farmId, meter_number: parsedData.meter_number, deleted_at: null, id: { not: id } },
+      where: { farm_id: farmId, meter_number: parsedData.meter_number, id: { not: id } },
     });
     if (duplicateCheck) {
-      return NextResponse.json({ error: "Meter with this number already exists" }, { status: 400 });
+      if (!duplicateCheck.deleted_at) {
+        return NextResponse.json({ error: "Meter with this number already exists" }, { status: 400 });
+      } else {
+        return NextResponse.json({ error: "A deleted meter is using this number. Please restore it or use a different number." }, { status: 400 });
+      }
     }
 
     const meter = await db.utilityMeter.update({
@@ -44,7 +48,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json(meter);
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    return NextResponse.json({ error: "Failed to update utility meter" }, { status: 500 });
+    console.error("UTILITY METER UPDATE ERROR:", error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update utility meter" }, { status: 500 });
   }
 }
 

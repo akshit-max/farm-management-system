@@ -41,7 +41,21 @@ export default async function DashboardPage() {
   let isOffline = false;
 
   try {
-    const [tb, as, m, pv, av, am, c, logs, fTypes, fConsum, salesData] = await Promise.all([
+    const [
+      tb, as, m, pv, av, am, c, logs, fTypes, fConsum,
+      salesList,
+      waterUsageResult,
+      elecUsageResult,
+      invCountResult,
+      invQtyResult,
+      slaughterTotalResult,
+      slaughterYieldResult,
+      expenseAggResult,
+      feedAggResult,
+      waterAggResult,
+      elecAggResult,
+      paymentAggResult
+    ] = await Promise.all([
       db.animalBatch.count({ where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" } }),
       db.animalBatch.aggregate({ _sum: { quantity: true }, where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" } }),
       db.mortality.aggregate({ _sum: { quantity: true }, where: { batch: { farm_id: farmId }, deleted_at: null } }),
@@ -103,15 +117,15 @@ export default async function DashboardPage() {
     feedTypes = fTypes as any;
     todayFeedConsumption = (fConsum as any)?._sum?.quantity_kg || 0;
     
-    todayWaterUsage = (salesData as any)[1]?._sum?.actual_consumption_liters || 0;
-    todayElectricityUsage = (salesData as any)[2]?._sum?.units_consumed || 0;
+    todayWaterUsage = waterUsageResult?._sum?.actual_consumption_liters || 0;
+    todayElectricityUsage = elecUsageResult?._sum?.units_consumed || 0;
     
-    totalInventoryCount = (salesData as any)[3] || 0;
-    totalInventoryQty = (salesData as any)[4]?._sum?.quantity || 0;
-    slaughteredToday = (salesData as any)[5]?._sum?.quantity_slaughtered || 0;
-    avgYield = (salesData as any)[6]?._avg?.yield_percentage || 0;
+    totalInventoryCount = invCountResult || 0;
+    totalInventoryQty = invQtyResult?._sum?.quantity || 0;
+    slaughteredToday = slaughterTotalResult?._sum?.quantity_slaughtered || 0;
+    avgYield = slaughterYieldResult?._avg?.yield_percentage || 0;
     
-    const sales = (salesData as any)[0] as any[];
+    const sales = salesList as any[];
     const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
     const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
     
@@ -123,11 +137,11 @@ export default async function DashboardPage() {
       if (inv.payment_status === "PAID") paidInvoicesCount++;
     });
 
-    const manualExp = (salesData as any)[7]?._sum?.amount || 0;
-    const feedExp = (salesData as any)[8]?._sum?.cost || 0;
-    const waterExp = (salesData as any)[9]?._sum?.total_cost || 0;
-    const elecExp = (salesData as any)[10]?._sum?.total_cost || 0;
-    const totalPayments = (salesData as any)[11]?._sum?.amount || 0;
+    const manualExp = expenseAggResult?._sum?.amount || 0;
+    const feedExp = feedAggResult?._sum?.cost || 0;
+    const waterExp = waterAggResult?._sum?.total_cost || 0;
+    const elecExp = elecAggResult?._sum?.total_cost || 0;
+    const totalPayments = paymentAggResult?._sum?.amount || 0;
 
     totalExpenses = manualExp + feedExp + waterExp + elecExp;
     netProfit = allTimeRevenue - totalExpenses;
@@ -159,21 +173,34 @@ export default async function DashboardPage() {
   }, 0);
   const todayMortalityRate = totalAnimals > 0 ? ((todayMortality / totalAnimals) * 100).toFixed(1) : "0.0";
 
-  // Mock data for Phase 2 pending items to match YNEX UI
-  const topMetrics = [
-    { label: "Weather", value: "27°C", sub: "Wed, 24-06-39", icon: Sun, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Total Animals", value: totalAnimals.toLocaleString(), sub: "Across all categories", icon: Users, color: "text-brand-primary", bg: "bg-brand-primary/10" },
-    { label: "Mortality Today", value: todayMortality.toString(), sub: `${todayMortalityRate}%`, icon: Activity, color: todayMortality > 0 ? "text-status-danger" : "text-emerald-500", bg: todayMortality > 0 ? "bg-status-danger/10" : "bg-emerald-50", trend: `${todayMortalityRate}%` },
-    { label: "Active Batches", value: totalBatches.toString(), sub: "Currently housed", icon: Layers, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
-    { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: FileText, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },
-    { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
-    { label: "Today's Water", value: `${todayWaterUsage.toLocaleString()} L`, sub: "Consumption", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Today's Power", value: `${todayElectricityUsage.toLocaleString()} kWh`, sub: "Electricity", icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Total Revenue", value: `₹${allTimeRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Today: ₹${todayRevenue.toLocaleString()}`, icon: IndianRupee, color: "text-brand-primary", bg: "bg-brand-primary/10" },
+  const weatherMetric = { label: "Weather", value: "27°C", sub: "Wed, 24-06-39", icon: Sun, color: "text-amber-500", bg: "bg-amber-50" };
+
+  const financialMetrics = [
+    { label: "Total Revenue", value: `₹${allTimeRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Today: ₹${todayRevenue.toLocaleString()}`, icon: IndianRupee, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Total Expenses", value: `₹${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: "All time", icon: TrendingUp, color: "text-status-danger", bg: "bg-status-danger/10" },
     { label: "Net Profit", value: `₹${netProfit.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: "Overall", icon: Activity, color: netProfit >= 0 ? "text-emerald-500" : "text-status-danger", bg: netProfit >= 0 ? "bg-emerald-50" : "bg-status-danger/10" },
     { label: "Receivables", value: `₹${totalReceivables.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: "Outstanding", icon: FileText, color: "text-amber-500", bg: "bg-amber-50" },
+  ];
+
+  const operationalMetrics = [
+    { label: "Total Animals", value: totalAnimals.toLocaleString(), sub: "Across all categories", icon: Users, color: "text-brand-primary", bg: "bg-brand-primary/10" },
+    { label: "Active Batches", value: totalBatches.toString(), sub: "Currently housed", icon: Layers, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Mortality Today", value: todayMortality.toString(), sub: `${todayMortalityRate}%`, icon: Activity, color: todayMortality > 0 ? "text-status-danger" : "text-emerald-500", bg: todayMortality > 0 ? "bg-status-danger/10" : "bg-emerald-50", trend: `${todayMortalityRate}%` },
+    { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
+  ];
+
+  const resourceMetrics = [
+    { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
+    { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: Package, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },
+    { label: "Today's Water", value: `${todayWaterUsage.toLocaleString()} L`, sub: "Consumption", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Today's Power", value: `${todayElectricityUsage.toLocaleString()} kWh`, sub: "Electricity", icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
+  ];
+
+  const processingMetrics = [
+    { label: "Inventory Quantity", value: `${totalInventoryQty.toLocaleString()} kg`, sub: "Total meat stock", icon: Package, color: "text-amber-500", bg: "bg-amber-50" },
+    { label: "Inventory Items", value: totalInventoryCount.toString(), sub: "Unique products", icon: Layers, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Processed Today", value: slaughteredToday.toLocaleString(), sub: "Animals slaughtered", icon: Activity, color: "text-status-danger", bg: "bg-status-danger/10" },
+    { label: "Average Yield", value: `${avgYield.toFixed(1)}%`, sub: "Usable meat %", icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50" },
   ];
 
   return (
@@ -188,27 +215,107 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Top Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {topMetrics.map((kpi, idx) => (
-          <div key={idx} className="bg-card-bg p-4 rounded-[var(--radius-card)] border border-border-main shadow-soft flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-full ${kpi.bg}`}>
-                <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
-              </div>
-              <div>
-                <p className="text-[12px] text-text-secondary font-medium">{kpi.label}</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-[18px] font-bold text-text-heading leading-tight">{kpi.value}</p>
-                  {kpi.trend && <span className={`text-[11px] font-bold ${kpi.trend.startsWith('+') ? 'text-status-success' : kpi.trend.startsWith('-') ? 'text-status-danger' : 'text-gray-400'}`}>{kpi.trend}</span>}
+      {/* Dashboard Top Header (Weather) */}
+      <div className="flex items-center justify-between bg-card-bg p-4 rounded-[16px] border border-border-main shadow-soft mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-text-heading">Farm Overview</h1>
+          <p className="text-sm text-text-secondary mt-1">Live metrics and operational data</p>
+        </div>
+        <div className="flex items-center gap-4 bg-page-bg py-2 px-4 rounded-xl border border-border-divider">
+          <weatherMetric.icon className={`w-6 h-6 ${weatherMetric.color}`} />
+          <div>
+            <p className="text-[14px] font-bold text-text-heading leading-tight">{weatherMetric.value}</p>
+            <p className="text-[11px] text-text-secondary">{weatherMetric.sub}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Financials */}
+      <div className="mb-8">
+        <h2 className="text-[13px] font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">Financial Performance</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {financialMetrics.map((kpi, idx) => (
+            <div key={`fin-${idx}`} className="bg-card-bg p-5 rounded-[16px] border border-border-main shadow-soft hover:shadow-md transition-shadow flex items-center justify-between group">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-[12px] ${kpi.bg} group-hover:scale-110 transition-transform`}>
+                  <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-[13px] text-text-secondary font-medium mb-1">{kpi.label}</p>
+                  <p className="text-[20px] font-bold text-text-heading leading-none">{kpi.value}</p>
                 </div>
               </div>
             </div>
-            <div className="text-[11px] text-text-disabled text-right whitespace-nowrap hidden xl:block">
-              {kpi.sub}
+          ))}
+        </div>
+      </div>
+
+      {/* Operations */}
+      <div className="mb-8">
+        <h2 className="text-[13px] font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">Operations & Livestock</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {operationalMetrics.map((kpi, idx) => (
+            <div key={`ops-${idx}`} className="bg-card-bg p-5 rounded-[16px] border border-border-main shadow-soft hover:shadow-md transition-shadow flex items-center justify-between group">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-[12px] ${kpi.bg} group-hover:scale-110 transition-transform`}>
+                  <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-[13px] text-text-secondary font-medium mb-1">{kpi.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-[20px] font-bold text-text-heading leading-none">{kpi.value}</p>
+                    {kpi.trend && <span className={`text-[12px] font-bold ${kpi.trend.startsWith('+') ? 'text-status-success' : kpi.trend.startsWith('-') ? 'text-status-danger' : 'text-gray-400'}`}>{kpi.trend}</span>}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      {/* Resources */}
+      <div className="mb-8">
+        <h2 className="text-[13px] font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">Resources & Consumption</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {resourceMetrics.map((kpi, idx) => (
+            <div key={`res-${idx}`} className="bg-card-bg p-5 rounded-[16px] border border-border-main shadow-soft hover:shadow-md transition-shadow flex items-center justify-between group">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-[12px] ${kpi.bg} group-hover:scale-110 transition-transform`}>
+                  <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-[13px] text-text-secondary font-medium mb-1">{kpi.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-[20px] font-bold text-text-heading leading-none">{kpi.value}</p>
+                    {kpi.trend && <span className={`text-[12px] font-bold ${kpi.trend.startsWith('+') ? 'text-status-success' : kpi.trend.startsWith('-') ? 'text-status-danger' : 'text-gray-400'}`}>{kpi.trend}</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Processing & Inventory */}
+      <div className="mb-8">
+        <h2 className="text-[13px] font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">Processing & Inventory</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {processingMetrics.map((kpi, idx) => (
+            <div key={`proc-${idx}`} className="bg-card-bg p-5 rounded-[16px] border border-border-main shadow-soft hover:shadow-md transition-shadow flex items-center justify-between group">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-[12px] ${kpi.bg} group-hover:scale-110 transition-transform`}>
+                  <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-[13px] text-text-secondary font-medium mb-1">{kpi.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-[20px] font-bold text-text-heading leading-none">{kpi.value}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

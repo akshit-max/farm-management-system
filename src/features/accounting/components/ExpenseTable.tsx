@@ -6,6 +6,7 @@ import { Pencil, Trash2, Search, IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -13,9 +14,10 @@ const columnHelper = createColumnHelper<any>();
 
 export function ExpenseTable({ data, onEdit, onRefresh, canMutate }: { data: any[]; onEdit: (u: any) => void; onRefresh: () => void; canMutate: boolean }) {
   const [globalFilter, setGlobalFilter] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const handleDelete = async (deleteId: string) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
       const res = await fetch(`/api/expenses/${deleteId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
@@ -23,6 +25,8 @@ export function ExpenseTable({ data, onEdit, onRefresh, canMutate }: { data: any
       onRefresh();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -56,7 +60,7 @@ export function ExpenseTable({ data, onEdit, onRefresh, canMutate }: { data: any
               <button onClick={() => onEdit(info.row.original)} className="p-1.5 text-gray-500 hover:text-brand-primary hover:bg-brand-primary/10 rounded-md transition-colors" title="Edit">
                 <Pencil className="w-4 h-4" />
               </button>
-              <button onClick={() => handleDelete(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+              <button onClick={() => setDeleteId(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -142,6 +146,14 @@ export function ExpenseTable({ data, onEdit, onRefresh, canMutate }: { data: any
           </div>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={!!deleteId}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense? This action cannot be undone."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

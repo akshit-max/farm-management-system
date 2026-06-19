@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/Input";
 const schema = z.object({
   meter_name: z.string().min(1, "Meter name is required"),
   meter_number: z.string().min(1, "Meter number is required"),
-  room_id: z.string().optional().nullable(),
+  room_id: z.string().min(1, "Linked Room is required"),
   status: z.string().default("ACTIVE"),
 });
 
@@ -80,11 +80,12 @@ export function UtilityMeterForm({ onSuccess, initialData, onCancel }: { onSucce
           <Input {...register("meter_number")} placeholder="MTR-89422" error={errors.meter_number?.message as string} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Linked Room (Optional)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Linked Room <span className="text-red-500">*</span></label>
           <select {...register("room_id")} className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-brand-primary focus:border-brand-primary text-sm">
-            <option value="">No Room (Global)</option>
+            <option value="" disabled>Select Room</option>
             {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
+          {errors.room_id && <p className="text-red-500 text-xs mt-1">{errors.room_id.message as string}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

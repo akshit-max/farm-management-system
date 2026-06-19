@@ -6,15 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { SlaughterTable } from "@/features/slaughter/components/SlaughterTable";
 import { SlaughterForm } from "@/features/slaughter/components/SlaughterForm";
 import { toast } from "sonner";
-import { useSession } from "next-auth/react";
+import { useRBAC } from "@/lib/rbac-client";
 
 export default function SlaughterPage() {
-  const { data: session } = useSession();
+  const { canMutate } = useRBAC();
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-
-  const isManager = session?.user?.role === "Manager" || session?.user?.role === "Owner";
 
   const fetchRecords = async () => {
     try {
@@ -46,14 +44,14 @@ export default function SlaughterPage() {
           <h1 className="text-2xl font-bold text-gray-900">Slaughter Operations</h1>
           <p className="text-gray-500 text-sm mt-1">Record slaughter batches, yield percentages, and generate meat inventory.</p>
         </div>
-        {!isCreating && isManager && (
+        {!isCreating && canMutate && (
           <Button onClick={() => setIsCreating(true)} className="flex items-center gap-2">
             <Plus className="w-4 h-4" /> Record Slaughter
           </Button>
         )}
       </div>
 
-      {isCreating && isManager && (
+      {isCreating && canMutate && (
         <SlaughterForm 
           onSuccess={handleSuccess} 
           onCancel={() => setIsCreating(false)} 
@@ -64,7 +62,7 @@ export default function SlaughterPage() {
         isLoading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div>
         ) : (
-          <SlaughterTable data={records} onRefresh={fetchRecords} canMutate={isManager} />
+          <SlaughterTable data={records} onRefresh={fetchRecords} canMutate={canMutate} />
         )
       )}
     </div>

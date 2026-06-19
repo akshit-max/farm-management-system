@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/Button";
 import { ExpenseTable } from "@/features/accounting/components/ExpenseTable";
 import { ExpenseForm } from "@/features/accounting/components/ExpenseForm";
 import { toast } from "sonner";
-import { useSession } from "next-auth/react";
+import { useRBAC } from "@/lib/rbac-client";
 
 export default function ExpensesPage() {
-  const { data: session } = useSession();
+  const { canMutate, isAccountant } = useRBAC();
   const [expenses, setExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
-
-  const isManager = session?.user?.role === "Manager" || session?.user?.role === "Owner" || session?.user?.role === "Accountant";
+  
+  const canManageExpenses = canMutate || isAccountant;
 
   const fetchExpenses = async () => {
     try {
@@ -48,14 +48,14 @@ export default function ExpensesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Expense Management</h1>
           <p className="text-gray-500 text-sm mt-1">Track manual operating expenses (Labor, Veterinary, Maintenance, etc).</p>
         </div>
-        {!isCreating && !editingExpense && isManager && (
+        {!isCreating && !editingExpense && canManageExpenses && (
           <Button onClick={() => setIsCreating(true)} className="flex items-center gap-2">
             <Plus className="w-4 h-4" /> Record Expense
           </Button>
         )}
       </div>
 
-      {(isCreating || editingExpense) && isManager && (
+      {(isCreating || editingExpense) && canManageExpenses && (
         <ExpenseForm 
           initialData={editingExpense} 
           onSuccess={handleSuccess} 
@@ -67,7 +67,7 @@ export default function ExpensesPage() {
         isLoading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div>
         ) : (
-          <ExpenseTable data={expenses} onEdit={setEditingExpense} onRefresh={fetchExpenses} canMutate={isManager} />
+          <ExpenseTable data={expenses} onEdit={setEditingExpense} onRefresh={fetchExpenses} canMutate={canManageExpenses} />
         )
       )}
     </div>

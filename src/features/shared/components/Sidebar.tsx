@@ -17,8 +17,8 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
     { name: 'Stages', icon: Activity, href: '/dashboard/stages', show: true },
     { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms', show: true },
     { name: 'Batches', icon: Layers, href: '/dashboard/animal-batches', show: true },
-    { name: 'Slaughter', icon: Activity, href: '/dashboard/slaughter', show: isManager || isAccountant },
-    { name: 'Meat Inventory', icon: Package, href: '/dashboard/inventory', show: isManager || isAccountant },
+    { name: 'Slaughter', icon: Activity, href: '/dashboard/slaughter', show: true },
+    { name: 'Meat Inventory', icon: Package, href: '/dashboard/inventory', show: true },
     { name: 'Feed Types', icon: FileText, href: '/dashboard/feed-types', show: true },
     { name: 'Feed Consumption', icon: Activity, href: '/dashboard/feed-consumption', show: true },
     { name: 'Water Usage', icon: Droplets, href: '/dashboard/water-usage', show: true },
@@ -37,15 +37,15 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
   ].filter(item => item.show);
 
   return (
-    <aside className={`bg-[var(--color-brand-sidebar)] text-gray-300 flex flex-col h-full overflow-y-auto transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[260px] hidden md:flex'}`}>
-      <div className={`h-[70px] px-6 flex items-center border-b border-[#0a3128] ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
+    <aside className={`bg-[var(--color-brand-sidebar)] text-gray-300 flex flex-col h-full transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[260px] hidden md:flex'}`}>
+      <div className={`h-[70px] shrink-0 px-6 flex items-center border-b border-[#0a3128] ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
         <div className="bg-transparent rounded flex items-center justify-center shrink-0">
           <Tractor className="text-white w-7 h-7 stroke-[1.5]" />
         </div>
         {!isCollapsed && <span className="text-white text-xl font-bold tracking-wide whitespace-nowrap">Farm ERP</span>}
       </div>
       
-      <nav className="flex-1 px-3 py-6 space-y-1 overflow-x-hidden">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-x-hidden overflow-y-auto custom-scrollbar">
         {!isCollapsed && (
           <div className="px-3 mb-2 text-xs font-semibold text-[#3a685c] uppercase tracking-wider">
             Main Menu
@@ -72,7 +72,7 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
         })}
       </nav>
       
-      <div className={`p-4 border-t border-[#0a3128] ${isCollapsed ? 'flex justify-center' : ''}`}>
+      <div className={`shrink-0 p-4 border-t border-[#0a3128] ${isCollapsed ? 'flex justify-center' : ''}`}>
         <button 
           title={isCollapsed ? "Farm Action" : undefined}
           className={`flex items-center justify-center gap-2 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-hover)] text-white py-2.5 rounded-lg transition-colors text-[15px] font-medium ${isCollapsed ? 'w-10 h-10 p-0 rounded-full' : 'w-full'}`}

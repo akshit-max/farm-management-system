@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { WaterUsageTable } from "@/features/water/components/WaterUsageTable";
 import { WaterUsageForm } from "@/features/water/components/WaterUsageForm";
 import { toast } from "sonner";
+import { useRBAC } from "@/lib/rbac-client";
 
 export default function WaterUsagePage() {
+  const { canMutate } = useRBAC();
   const [usages, setUsages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -44,14 +46,14 @@ export default function WaterUsagePage() {
           <h1 className="text-2xl font-bold text-gray-900">Water Management</h1>
           <p className="text-gray-500 text-sm mt-1">Track daily water consumption across rooms and batches.</p>
         </div>
-        {!isCreating && !editingUsage && (
+        {!isCreating && !editingUsage && canMutate && (
           <Button onClick={() => setIsCreating(true)} className="flex items-center gap-2">
             <Plus className="w-4 h-4" /> Record Usage
           </Button>
         )}
       </div>
 
-      {(isCreating || editingUsage) && (
+      {(isCreating || editingUsage) && canMutate && (
         <WaterUsageForm 
           initialData={editingUsage} 
           onSuccess={handleSuccess} 
@@ -63,7 +65,7 @@ export default function WaterUsagePage() {
         isLoading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div>
         ) : (
-          <WaterUsageTable data={usages} onEdit={setEditingUsage} onRefresh={fetchUsages} />
+          <WaterUsageTable data={usages} onEdit={setEditingUsage} onRefresh={fetchUsages} canMutate={canMutate} />
         )
       )}
     </div>
