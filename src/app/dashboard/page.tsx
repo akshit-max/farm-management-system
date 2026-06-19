@@ -22,6 +22,10 @@ export default async function DashboardPage() {
   let auditLogs: any[] = [];
   let feedTypes: any[] = [];
   let todayFeedConsumption = 0;
+  let todayRevenue = 0;
+  let monthlyRevenue = 0;
+  let pendingPayments = 0;
+  let paidInvoicesCount = 0;
   let isOffline = false;
 
   try {
@@ -52,6 +56,9 @@ export default async function DashboardPage() {
           deleted_at: null, 
           date: { gte: new Date(new Date().setHours(0,0,0,0)) } 
         }
+      }),
+      db.salesInvoice.findMany({
+        where: { farm_id: farmId, deleted_at: null }
       })
     ]);
     totalBatches = tb;
@@ -64,6 +71,17 @@ export default async function DashboardPage() {
     auditLogs = logs;
     feedTypes = arguments[0][8] as any;
     todayFeedConsumption = (arguments[0][9] as any)._sum.quantity_kg || 0;
+    
+    const sales = arguments[0][10] as any[];
+    const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
+    const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+    
+    sales.forEach(inv => {
+      if (new Date(inv.invoice_date) >= startOfToday) todayRevenue += inv.total;
+      if (new Date(inv.invoice_date) >= startOfMonth) monthlyRevenue += inv.total;
+      if (inv.payment_status === "PENDING" || inv.payment_status === "PARTIAL") pendingPayments += inv.total;
+      if (inv.payment_status === "PAID") paidInvoicesCount++;
+    });
   } catch (err) {
     console.error("Database connection error (Offline Mode):", err);
     isOffline = true;
@@ -92,7 +110,7 @@ export default async function DashboardPage() {
     { label: "Today's Feed", value: `${todayFeedConsumption.toLocaleString()} kg`, sub: "Consumption", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", trend: currentFeedStock > 0 ? "Stock OK" : "" },
     { label: "Feed Stock", value: `${currentFeedStock.toLocaleString()} kg`, sub: `${lowStockCount} items low`, icon: FileText, color: lowStockCount > 0 ? "text-amber-500" : "text-emerald-500", bg: lowStockCount > 0 ? "bg-amber-50" : "bg-emerald-50" },
     { label: "Overdue Vax", value: overdueVaccinationsCount.toString(), sub: "Action Required", icon: ShieldPlus, color: "text-status-danger", bg: "bg-status-danger/10" },
-    { label: "Today's Revenue", value: "$0.00", sub: "Sales", icon: DollarSign, color: "text-brand-primary", bg: "bg-brand-primary/10" },
+    { label: "Today's Revenue", value: `$${todayRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`, sub: `Monthly: $${monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: "text-brand-primary", bg: "bg-brand-primary/10" },
   ];
 
   return (
