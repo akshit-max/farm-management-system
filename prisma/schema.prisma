@@ -59,6 +59,9 @@ model User {
   last_modified DateTime   @default(now()) @updatedAt
   sync_status   String     @default("PENDING")
 
+  reset_token         String?   @unique
+  reset_token_expiry  DateTime?
+
   @@map("users")
 }
 

@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -14,9 +13,8 @@ const schema = z.object({
   sale_options: z.string().optional(),
 });
 
-export function CategoryForm({ farmId, onSuccess, initialData, onCancel }: { farmId: string; onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
+export function CategoryForm({ onSuccess, initialData, onCancel }: { onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(schema),
@@ -55,7 +53,7 @@ export function CategoryForm({ farmId, onSuccess, initialData, onCancel }: { far
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, farm_id: farmId }),
+        body: JSON.stringify(data),
       });
       if (!res.ok) {
         const error = await res.json();
@@ -64,7 +62,6 @@ export function CategoryForm({ farmId, onSuccess, initialData, onCancel }: { far
       toast.success(initialData ? "Category updated!" : "Category saved!");
       reset();
       onSuccess();
-      router.refresh();
     } catch (err: any) {
       toast.error(err.message);
     } finally {

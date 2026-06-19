@@ -49,10 +49,11 @@ async function main() {
   });
   console.log('Created/Verified default farm settings.');
 
+  const password_hash = await bcrypt.hash('Admin@123', 10);
+  
   // 4. Create Owner Account
   const ownerRole = createdRoles.find(r => r.name === 'Owner');
   if (ownerRole) {
-    const password_hash = await bcrypt.hash('Admin@123', 10);
     const adminUser = await prisma.user.upsert({
       where: { email: 'admin@farmerp.com' },
       update: {
@@ -67,6 +68,44 @@ async function main() {
       },
     });
     console.log(`Created/Verified admin user: ${adminUser.email}`);
+  }
+
+  // 5. Create Worker Account
+  const workerRole = createdRoles.find(r => r.name === 'Worker');
+  if (workerRole) {
+    const workerUser = await prisma.user.upsert({
+      where: { email: 'worker@farmerp.com' },
+      update: {
+        password_hash,
+      },
+      create: {
+        name: 'Farm Worker',
+        email: 'worker@farmerp.com',
+        password_hash,
+        role_id: workerRole.id,
+        farm_id: farm.id,
+      },
+    });
+    console.log(`Created/Verified worker user: ${workerUser.email}`);
+  }
+
+  // 6. Create Manager Account
+  const managerRole = createdRoles.find(r => r.name === 'Manager');
+  if (managerRole) {
+    const managerUser = await prisma.user.upsert({
+      where: { email: 'manager@farmerp.com' },
+      update: {
+        password_hash,
+      },
+      create: {
+        name: 'Farm Manager',
+        email: 'manager@farmerp.com',
+        password_hash,
+        role_id: managerRole.id,
+        farm_id: farm.id,
+      },
+    });
+    console.log(`Created/Verified manager user: ${managerUser.email}`);
   }
 
   console.log('Seeding finished.');

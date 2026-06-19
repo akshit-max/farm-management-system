@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 const schema = z.object({
   animal_category_id: z.string().uuid("Category is required"),
@@ -15,10 +14,10 @@ const schema = z.object({
   display_order: z.coerce.number().min(0),
 });
 
-export function StageForm({ farmId, onSuccess, initialData, onCancel }: { farmId: string; onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
+export function StageForm({ onSuccess, initialData, onCancel }: { onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const router = useRouter();
+
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(schema),
@@ -32,10 +31,10 @@ export function StageForm({ farmId, onSuccess, initialData, onCancel }: { farmId
   });
 
   useEffect(() => {
-    fetch(`/api/animal-categories?farmId=${farmId}`)
+    fetch(`/api/animal-categories`)
       .then(res => res.json())
       .then(data => setCategories(data.data || []));
-  }, [farmId]);
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -66,7 +65,7 @@ export function StageForm({ farmId, onSuccess, initialData, onCancel }: { farmId
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, farm_id: farmId }),
+        body: JSON.stringify(data),
       });
       if (!res.ok) {
         const error = await res.json();

@@ -11,7 +11,7 @@ const schema = z.object({
   capacity: z.coerce.number().min(1, "Capacity must be > 0"),
 });
 
-export function RoomForm({ farmId, onSuccess, initialData, onCancel }: { farmId: string; onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
+export function RoomForm({ onSuccess, initialData, onCancel }: { onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [stages, setStages] = useState<any[]>([]);
   const [selectedStages, setSelectedStages] = useState<string[]>([]);
@@ -22,10 +22,10 @@ export function RoomForm({ farmId, onSuccess, initialData, onCancel }: { farmId:
   });
 
   useEffect(() => {
-    fetch(`/api/stages?farmId=${farmId}`)
+    fetch(`/api/stages`)
       .then(res => res.json())
       .then(data => setStages(data.data || []));
-  }, [farmId]);
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -33,7 +33,15 @@ export function RoomForm({ farmId, onSuccess, initialData, onCancel }: { farmId:
         name: initialData.name || "",
         capacity: initialData.capacity || 100,
       });
-      setSelectedStages(initialData.allowed_stages || []);
+      // allowed_stages is stored as a comma-separated string in DB, parse to array
+      const raw = initialData.allowed_stages;
+      if (Array.isArray(raw)) {
+        setSelectedStages(raw);
+      } else if (typeof raw === "string" && raw.length > 0) {
+        setSelectedStages(raw.split(",").map((s: string) => s.trim()).filter(Boolean));
+      } else {
+        setSelectedStages([]);
+      }
     } else {
       reset({ name: "", capacity: 100 });
       setSelectedStages([]);
@@ -57,7 +65,7 @@ export function RoomForm({ farmId, onSuccess, initialData, onCancel }: { farmId:
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, farm_id: farmId, allowed_stages: selectedStages.join(",") }),
+        body: JSON.stringify({ ...data, allowed_stages: selectedStages.join(",") }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
       toast.success(initialData ? "Room updated!" : "Room saved!");

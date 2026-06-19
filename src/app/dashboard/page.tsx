@@ -16,25 +16,39 @@ export default async function DashboardPage() {
   let animalSum: { _sum: { quantity: number | null } } = { _sum: { quantity: 0 } };
   let mortalities: { _sum: { quantity: number | null } } = { _sum: { quantity: 0 } };
   let pendingVaccinations: any[] = [];
+  let allVaccinations: any[] = [];
+  let allMortalities: any[] = [];
   let categories: any[] = [];
+  let auditLogs: any[] = [];
   let isOffline = false;
 
   try {
-    const [tb, as, m, pv, c] = await Promise.all([
+    const [tb, as, m, pv, av, am, c, logs] = await Promise.all([
       db.animalBatch.count({ where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" } }),
       db.animalBatch.aggregate({ _sum: { quantity: true }, where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" } }),
       db.mortality.aggregate({ _sum: { quantity: true }, where: { batch: { farm_id: farmId }, deleted_at: null } }),
       db.vaccination.findMany({ where: { batch: { farm_id: farmId }, status: "PENDING", deleted_at: null } }),
+      db.vaccination.findMany({ where: { batch: { farm_id: farmId }, deleted_at: null }, orderBy: { due_date: "asc" } }),
+      db.mortality.findMany({ where: { batch: { farm_id: farmId }, deleted_at: null }, orderBy: { date: "asc" } }),
       db.animalCategory.findMany({ 
         where: { farm_id: farmId, deleted_at: null },
         include: { animal_batches: { where: { deleted_at: null, status: "ACTIVE" } } }
       }),
+      db.auditLog.findMany({
+        where: { farm_id: farmId },
+        orderBy: { timestamp: "desc" },
+        take: 5,
+        include: { user: { select: { name: true } } }
+      })
     ]);
     totalBatches = tb;
     animalSum = as as any;
     mortalities = m as any;
     pendingVaccinations = pv;
+    allVaccinations = av;
+    allMortalities = am;
     categories = c;
+    auditLogs = logs;
   } catch (err) {
     console.error("Database connection error (Offline Mode):", err);
     isOffline = true;
@@ -149,11 +163,15 @@ export default async function DashboardPage() {
                 Show More
               </button>
             </div>
-            <OverviewAnalytics />
+            <OverviewAnalytics 
+              categories={categories}
+              mortalities={allMortalities}
+              vaccinations={allVaccinations}
+            />
           </div>
         </div>
 
-        {/* Right Column: Live Report */}
+        {/* Right Column: Live Report & Activity Feed */}
         <div className="xl:col-span-1 space-y-6">
           <div className="bg-card-bg rounded-[var(--radius-card)] border border-border-main shadow-soft p-5 h-full">
             <div className="flex items-center justify-between mb-5">
@@ -174,7 +192,7 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 mb-8">
               <h4 className="text-[13px] font-bold text-text-heading uppercase tracking-wide border-b border-border-divider pb-2">Upcoming Tasks</h4>
               
               <div className="flex items-center justify-between p-3 rounded-lg border border-border-divider bg-page-bg">
@@ -201,6 +219,36 @@ export default async function DashboardPage() {
                   </div>
                 </div>
                 <span className="font-bold text-text-heading">{upcomingVaccinationsCount}</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-[13px] font-bold text-text-heading uppercase tracking-wide border-b border-border-divider pb-2">Recent Activity</h4>
+              
+              <div className="space-y-3">
+                {auditLogs.length === 0 ? (
+                  <div className="text-[12px] text-text-secondary text-center py-4">No recent activity</div>
+                ) : (
+                  auditLogs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg border border-border-divider bg-page-bg transition-colors hover:border-brand-primary/20">
+                      <div className={`p-2 rounded-full shrink-0 ${
+                        log.action === 'CREATE' ? 'bg-status-success/10 text-status-success' :
+                        log.action === 'UPDATE' ? 'bg-blue-500/10 text-blue-500' :
+                        'bg-status-danger/10 text-status-danger'
+                      }`}>
+                        <Activity className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-medium text-text-heading leading-tight">
+                          {log.user?.name || "User"} {log.action.toLowerCase()}d {log.entity}
+                        </p>
+                        <p className="text-[11px] text-text-secondary mt-1">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

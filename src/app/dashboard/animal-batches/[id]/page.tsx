@@ -9,17 +9,19 @@ import { format } from "date-fns";
 import { ArrowLeft, Activity, ShieldPlus } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useRBAC } from "@/lib/rbac-client";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const mortalitySchema = z.object({
-  quantity: z.coerce.number().min(1),
-  cause: z.string().optional(),
-  date: z.string().min(1),
+  quantity: z.coerce.number().min(1, "Must be at least 1"),
+  cause: z.string().min(1, "Cause is required"),
+  date: z.string().min(1, "Date is required"),
   notes: z.string().optional(),
 });
 
 const vaccinationSchema = z.object({
-  vaccine_name: z.string().min(1),
-  due_date: z.string().min(1),
+  vaccine_name: z.string().min(1, "Vaccine name is required"),
+  due_date: z.string().min(1, "Due date is required"),
   status: z.enum(["PENDING", "COMPLETED", "OVERDUE"]),
   notes: z.string().optional(),
 });
@@ -29,6 +31,7 @@ export default function BatchDetailsPage() {
   const id = params?.id as string;
   const [batch, setBatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { canMutate } = useRBAC();
 
   const mForm = useForm({
     resolver: zodResolver(mortalitySchema),
@@ -112,7 +115,16 @@ export default function BatchDetailsPage() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return (
+    <div className="space-y-6 pb-12">
+      <Skeleton className="h-8 w-64" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Skeleton className="h-32 w-full lg:col-span-3" />
+        <Skeleton className="h-64 w-full lg:col-span-1" />
+        <Skeleton className="h-64 w-full lg:col-span-2" />
+      </div>
+    </div>
+  );
   if (!batch) return <div>Batch not found</div>;
 
   return (
@@ -141,24 +153,42 @@ export default function BatchDetailsPage() {
 
         {/* Mortality Management */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4"><Activity className="w-5 h-5 text-red-500"/> Record Mortality</h2>
-            <form onSubmit={mForm.handleSubmit(onMortalitySubmit)} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Quantity</label>
-                <input type="number" required min="1" {...mForm.register("quantity")} className="w-full border p-2 rounded" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Cause</label>
-                <input {...mForm.register("cause")} className="w-full border p-2 rounded" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Date</label>
-                <input type="date" required {...mForm.register("date")} className="w-full border p-2 rounded" />
-              </div>
-              <button type="submit" className="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">Record Death</button>
-            </form>
-          </div>
+          {canMutate && (
+            <div className="bg-white p-6 rounded-xl border shadow-sm">
+              <h2 className="text-lg font-semibold flex items-center gap-2 mb-4"><Activity className="w-5 h-5 text-red-500"/>Record Mortality</h2>
+              <form onSubmit={mForm.handleSubmit(onMortalitySubmit)} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Quantity <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={batch?.quantity}
+                    {...mForm.register("quantity")}
+                    className="w-full border p-2 rounded mt-1"
+                  />
+                  {mForm.formState.errors.quantity && <p className="text-red-500 text-xs mt-1">{mForm.formState.errors.quantity.message as string}</p>}
+                  {batch?.quantity && <p className="text-xs text-gray-400 mt-0.5">Max: {batch.quantity}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cause <span className="text-red-500">*</span></label>
+                  <input {...mForm.register("cause")} className="w-full border p-2 rounded mt-1" placeholder="e.g. Disease, Injury" />
+                  {mForm.formState.errors.cause && <p className="text-red-500 text-xs mt-1">{mForm.formState.errors.cause.message as string}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Date <span className="text-red-500">*</span></label>
+                  <input type="date" {...mForm.register("date")} className="w-full border p-2 rounded mt-1" />
+                  {mForm.formState.errors.date && <p className="text-red-500 text-xs mt-1">{mForm.formState.errors.date.message as string}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <input {...mForm.register("notes")} className="w-full border p-2 rounded mt-1" />
+                </div>
+                <button type="submit" disabled={mForm.formState.isSubmitting} className="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 disabled:opacity-50">
+                  {mForm.formState.isSubmitting ? "Saving..." : "Record Death"}
+                </button>
+              </form>
+            </div>
+          )}
           <div className="bg-white p-6 rounded-xl border shadow-sm">
             <h3 className="font-medium mb-3">Mortality History</h3>
             <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -175,22 +205,32 @@ export default function BatchDetailsPage() {
 
         {/* Vaccination Tracking */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4"><ShieldPlus className="w-5 h-5 text-blue-500"/> Schedule Vaccination</h2>
-            <form onSubmit={vForm.handleSubmit(onVaccinationSubmit)} className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Vaccine Name <span className="text-red-500">*</span></label>
-                <input required {...vForm.register("vaccine_name")} className="w-full border p-2 rounded" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Due Date <span className="text-red-500">*</span></label>
-                <input type="date" required {...vForm.register("due_date")} className="w-full border p-2 rounded" />
-              </div>
-              <div className="col-span-2">
-                <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Schedule</button>
-              </div>
-            </form>
-          </div>
+        {canMutate && (
+            <div className="bg-white p-6 rounded-xl border shadow-sm">
+              <h2 className="text-lg font-semibold flex items-center gap-2 mb-4"><ShieldPlus className="w-5 h-5 text-blue-500"/> Schedule Vaccination</h2>
+              <form onSubmit={vForm.handleSubmit(onVaccinationSubmit)} className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Vaccine Name <span className="text-red-500">*</span></label>
+                  <input {...vForm.register("vaccine_name")} className="w-full border p-2 rounded mt-1" placeholder="e.g. Newcastle Disease" />
+                  {vForm.formState.errors.vaccine_name && <p className="text-red-500 text-xs mt-1">{vForm.formState.errors.vaccine_name.message as string}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Due Date <span className="text-red-500">*</span></label>
+                  <input type="date" {...vForm.register("due_date")} className="w-full border p-2 rounded mt-1" />
+                  {vForm.formState.errors.due_date && <p className="text-red-500 text-xs mt-1">{vForm.formState.errors.due_date.message as string}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <input {...vForm.register("notes")} className="w-full border p-2 rounded mt-1" />
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <button type="submit" disabled={vForm.formState.isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50">
+                    {vForm.formState.isSubmitting ? "Saving..." : "Add Schedule"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
           <div className="bg-white p-6 rounded-xl border shadow-sm">
             <h3 className="font-medium mb-3">Vaccination Schedule</h3>
             <div className="overflow-x-auto">
@@ -216,7 +256,7 @@ export default function BatchDetailsPage() {
                         </span>
                       </td>
                       <td>
-                        {v.status !== "COMPLETED" && (
+                        {canMutate && v.status !== "COMPLETED" && (
                           <button onClick={() => markVaccineCompleted(v.id)} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded hover:bg-emerald-200">
                             Mark Complete
                           </button>

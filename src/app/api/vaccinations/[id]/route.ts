@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit";
+import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const updateVaccinationSchema = z.object({
@@ -14,6 +15,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const session = await auth();
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManager(session)) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
 
   try {
     const body = await req.json();

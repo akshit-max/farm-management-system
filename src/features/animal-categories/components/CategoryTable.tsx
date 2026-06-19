@@ -5,15 +5,17 @@ import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPagi
 import { toast } from "sonner";
 import { Trash2, Search, Edit, MoreHorizontal, Filter, Layers, AlertCircle } from "lucide-react";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
+import { useRBAC } from "@/lib/rbac-client";
 
 const columnHelper = createColumnHelper<any>();
 
-export function CategoryTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIndex: number; onEdit?: (cat: any) => void }) {
+export function CategoryTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?: (cat: any) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { canMutate } = useRBAC();
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -70,7 +72,7 @@ export function CategoryTable({ farmId, keyIndex, onEdit }: { farmId: string; ke
       header: "Sale Options",
       cell: (info) => <span className="text-text-secondary">{info.getValue()}</span>
     }),
-    columnHelper.display({
+    ...(canMutate ? [columnHelper.display({
       id: "actions",
       header: "Actions",
       cell: (info) => (
@@ -83,7 +85,7 @@ export function CategoryTable({ farmId, keyIndex, onEdit }: { farmId: string; ke
           </button>
         </div>
       ),
-    }),
+    })] : []),
   ];
 
   const table = useReactTable({

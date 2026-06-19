@@ -3,12 +3,14 @@
 import { signIn } from "next-auth/react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Hexagon, Loader2, Mail, Lock, CheckCircle2 } from "lucide-react";
+import { Hexagon, Loader2, Mail, Lock, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -51,7 +53,7 @@ export default function LoginPage() {
             <div className="bg-transparent rounded flex items-center justify-center">
               <Hexagon className="text-white w-10 h-10 stroke-[1.5]" />
             </div>
-            <span className="text-white text-3xl font-bold tracking-wide">Ynex</span>
+            <span className="text-white text-3xl font-bold tracking-wide">Farm ERP</span>
           </div>
           
           <div className="mb-12">
@@ -80,7 +82,7 @@ export default function LoginPage() {
           </div>
           
           <div className="mt-auto">
-            <p className="text-sm text-gray-500">© 2026 Ynex ERP. All rights reserved.</p>
+            <p className="text-sm text-gray-500">© 2026 Farm ERP. All rights reserved.</p>
           </div>
         </div>
       </div>
@@ -104,7 +106,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isPending}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-[var(--radius-input)] text-[15px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]/20 focus:border-[var(--color-brand-primary)] transition-all disabled:opacity-50"
-                  placeholder="EMAIL_ADDRESS"
+                  placeholder="name@company.com"
                   required
                 />
               </div>
@@ -113,19 +115,26 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-[13px] font-semibold text-text-heading uppercase tracking-wide">Password</label>
-                <a href="#" className="text-[13px] font-semibold text-[var(--color-brand-primary)] hover:text-[var(--color-brand-hover)]">Forgot password?</a>
+                <Link href="/forgot-password" className="text-[13px] font-semibold text-[var(--color-brand-primary)] hover:text-[var(--color-brand-hover)]">Forgot password?</Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isPending}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-[var(--radius-input)] text-[15px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]/20 focus:border-[var(--color-brand-primary)] transition-all disabled:opacity-50"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-[var(--radius-input)] text-[15px] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]/20 focus:border-[var(--color-brand-primary)] transition-all disabled:opacity-50"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
             
@@ -154,7 +163,7 @@ export default function LoginPage() {
 
           <div className="text-center pt-4 border-t border-gray-100">
             <p className="text-[14px] text-text-secondary">
-              Don't have an account? <a href="#" className="font-semibold text-[var(--color-brand-primary)] hover:text-[var(--color-brand-hover)]">Contact Sales</a>
+              Don't have an account? <Link href="/signup" className="font-semibold text-[var(--color-brand-primary)] hover:text-[var(--color-brand-hover)]">Sign Up Now</Link>
             </p>
           </div>
         </div>

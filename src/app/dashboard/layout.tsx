@@ -1,9 +1,11 @@
 import { DashboardShell } from "@/features/shared/components/DashboardShell";
+import { auth } from "@/auth";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardShell>{children}</DashboardShell>;
+  const session = await auth();
+  return <DashboardShell userRole={session?.user?.role}>{children}</DashboardShell>;
 }

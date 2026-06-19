@@ -5,18 +5,24 @@ import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPagi
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
+import { useRBAC } from "@/lib/rbac-client";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
 
 const columnHelper = createColumnHelper<any>();
 
-export function StageTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIndex: number; onEdit?: (stage: any) => void }) {
+export function StageTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?: (stage: any) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { canMutate } = useRBAC();
 
   const fetchStages = async () => {
     setLoading(true);
-    const res = await fetch(`/api/stages?farmId=${farmId}`);
+    const res = await fetch(`/api/stages`);
     if (res.ok) {
       const json = await res.json();
       setData(json.data);
@@ -26,7 +32,7 @@ export function StageTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIn
 
   useEffect(() => {
     fetchStages();
-  }, [farmId, keyIndex]);
+  }, [keyIndex]);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
@@ -48,7 +54,7 @@ export function StageTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIn
     columnHelper.accessor("display_order", { header: "Order" }),
     columnHelper.accessor("expected_duration_days", { header: "Duration (Days)" }),
     columnHelper.accessor("expected_weight", { header: "Target Weight" }),
-    columnHelper.display({
+    ...(canMutate ? [columnHelper.display({
       id: "actions",
       header: "Actions",
       cell: (info) => (
@@ -61,7 +67,7 @@ export function StageTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIn
           </button>
         </div>
       ),
-    }),
+    })] : []),
   ];
 
   const table = useReactTable({
@@ -71,42 +77,50 @@ export function StageTable({ farmId, keyIndex, onEdit }: { farmId: string; keyIn
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
+      <Skeleton className="h-8 w-1/4" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <th key={header.id} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {table.getRowModel().rows.map(row => (
-              <tr key={row.id}>
-                {row.getVisibleCells().map(cell => (
-                  <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {data.length === 0 && (
-              <tr><td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">No stages found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
-        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="text-sm text-[var(--color-brand-primary)] disabled:opacity-50 font-medium">Previous</button>
-        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="text-sm text-[var(--color-brand-primary)] disabled:opacity-50 font-medium">Next</button>
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map(headerGroup => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map(header => (
+                <TableHead key={header.id}>
+                  {flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map(row => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map(cell => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+          {data.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24">
+                <EmptyState title="No stages found" description="Create a stage to start managing your animal lifecycles." />
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <div className="px-6 py-3 flex items-center justify-between">
+        <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Previous</Button>
+        <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Next</Button>
       </div>
 
       <ConfirmModal
