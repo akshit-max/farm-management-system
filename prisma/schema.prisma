@@ -706,6 +706,6 @@ model Notification {
   sync_status   String   @default("PENDING")
 
   @@index([farm_id])
-  @@index([fingerprint])
+  @@unique([farm_id, fingerprint])
   @@map("notifications")
 }

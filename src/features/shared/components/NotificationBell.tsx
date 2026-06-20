@@ -12,7 +12,6 @@ export function NotificationBell() {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        await fetch("/api/alerts/generate", { method: "POST" });
         const res = await fetch("/api/alerts?limit=1&unreadOnly=true");
         if (res.ok) {
           const data = await res.json();

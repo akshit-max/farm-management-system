@@ -15,7 +15,6 @@ export default function AlertsPage() {
   const fetchAlerts = async () => {
     try {
       setLoading(true);
-      await fetch("/api/alerts/generate", { method: "POST" });
       const res = await fetch("/api/alerts?limit=100");
       if (res.ok) {
         const data = await res.json();
