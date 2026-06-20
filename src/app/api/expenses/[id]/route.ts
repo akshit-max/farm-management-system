@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit";
-import { isManager } from "@/lib/rbac";
+import { isManager, isAccountant } from "@/lib/rbac";
 import { z } from "zod";
 
 const updateExpenseSchema = z.object({
@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await auth();
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isManager(session)) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
+  if (!(isManager(session) || isAccountant(session))) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
 
   try {
     const existing = await db.expense.findFirst({
@@ -47,7 +47,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const session = await auth();
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isManager(session)) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
+  if (!(isManager(session) || isAccountant(session))) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
 
   try {
     const existing = await db.expense.findFirst({

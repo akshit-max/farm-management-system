@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit";
-import { isManager } from "@/lib/rbac";
+import { isManager, isAccountant } from "@/lib/rbac";
 import { z } from "zod";
 
 const createPaymentSchema = z.object({
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isManager(session)) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
+  if (!(isManager(session) || isAccountant(session))) return NextResponse.json({ error: "Unauthorized role" }, { status: 403 });
 
   try {
     const body = await req.json();
@@ -31,7 +32,11 @@ export async function POST(req: NextRequest) {
     });
     if (!customer) return NextResponse.json({ error: "Invalid customer" }, { status: 400 });
 
-    // 2. Transaction
+    // 2. Transaction — Serializable isolation prevents concurrent overpayment.
+    // Under Read Committed (Prisma default), two simultaneous requests can both
+    // read the same outstanding balance, both pass validation, and both commit,
+    // causing total payments to exceed the invoice total.
+    // Serializable causes PostgreSQL to abort one conflicting transaction.
     const result = await db.$transaction(async (tx) => {
       // Re-fetch invoice inside transaction
       const txInvoice = await tx.salesInvoice.findFirst({
@@ -72,7 +77,7 @@ export async function POST(req: NextRequest) {
       });
 
       return payment;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     await logAudit(session.user.id, farmId, "CREATE", "CustomerPayment", result.id);
     return NextResponse.json(result, { status: 201 });

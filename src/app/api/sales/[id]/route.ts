@@ -5,8 +5,9 @@ import { logAudit } from "@/lib/audit";
 import { isManager, isAccountant } from "@/lib/rbac";
 import { z } from "zod";
 
+// payment_status is intentionally excluded — it is derived from CustomerPayment records only.
+// Direct status overrides are forbidden to prevent ledger drift.
 const updateSalesSchema = z.object({
-  payment_status: z.enum(["PENDING", "PARTIAL", "PAID"]),
   notes: z.string().optional(),
 });
 

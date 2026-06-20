@@ -15,10 +15,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   }
 
   try {
+    let reversedPaymentIds: string[] = [];
+
     const result = await db.$transaction(async (tx) => {
       const invoice = await tx.salesInvoice.findFirst({
         where: { id: params.id, farm_id: farmId, deleted_at: null },
-        include: { items: true }
+        include: { items: true, payments: { where: { deleted_at: null } } }
       });
 
       if (!invoice) throw new Error("Invoice not found or already cancelled");
@@ -37,10 +39,28 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         });
       }
 
+      // 3. Soft delete linked CustomerPayment records
+      if (invoice.payments.length > 0) {
+        for (const payment of invoice.payments) {
+          await tx.customerPayment.update({
+            where: { id: payment.id },
+            data: { 
+              deleted_at: new Date(),
+              notes: payment.notes ? `Reversed due to invoice cancellation. ${payment.notes}` : "Reversed due to invoice cancellation."
+            }
+          });
+          reversedPaymentIds.push(payment.id);
+        }
+      }
+
       return invoice;
     });
 
     await logAudit(session.user.id, farmId, "CANCEL", "SalesInvoice", result.id);
+    for (const paymentId of reversedPaymentIds) {
+      await logAudit(session.user.id, farmId, "DELETE", "CustomerPayment", paymentId);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to cancel invoice" }, { status: 500 });
