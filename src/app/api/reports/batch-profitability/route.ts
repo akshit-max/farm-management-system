@@ -48,37 +48,61 @@ export async function GET(req: NextRequest) {
       db.animalBatch.findMany({
         where: { farm_id: farmId, deleted_at: null },
         include: {
-          feedConsumptions: true,
+          feedConsumptions: { where: { deleted_at: null } },
           slaughterRecords: true,
-          animal_category: true
+          animal_category: true,
+          // Direct traceability: AnimalBatch → SalesInvoiceItem → SalesInvoice
+          // batch_id FK on SalesInvoiceItem links each line item back to the batch it came from.
+          salesInvoiceItems: {
+            where: {
+              deleted_at: null,
+              invoice: { deleted_at: null } // exclude items on cancelled invoices
+            },
+            include: { invoice: true }
+          }
         }
       }),
       db.waterUsage.findMany({ where: { farm_id: farmId, deleted_at: null } }),
       db.electricityUsage.findMany({ where: { farm_id: farmId, deleted_at: null } })
     ]);
-    
+
     const data = batches.map(b => {
+      // Cost side
       const feedCost = b.feedConsumptions.reduce((sum, f) => sum + f.cost, 0);
-      const waterCost = waterUsages.filter(w => w.room_id === b.room_id).reduce((sum, w) => sum + w.total_cost, 0);
-      const elecCost = elecUsages.filter(e => e.room_id === b.room_id).reduce((sum, e) => sum + e.total_cost, 0);
+      // Utility costs are room-level; attribute proportionally to batches in the same room.
+      // Since a room may host multiple batches, we assign the full room utility cost to each batch
+      // that occupied that room. This is the only available data — per-batch utility is not tracked.
+      const waterCost = waterUsages
+        .filter(w => w.room_id === b.room_id)
+        .reduce((sum, w) => sum + w.total_cost, 0);
+      const elecCost = elecUsages
+        .filter(e => e.room_id === b.room_id)
+        .reduce((sum, e) => sum + e.total_cost, 0);
       const utilityCost = waterCost + elecCost;
-      
-      const revenue = 0; 
-      const netProfit = revenue - feedCost - utilityCost;
-      const roi = (feedCost + utilityCost) > 0 ? (netProfit / (feedCost + utilityCost)) * 100 : 0;
-      
+      const purchaseCost = b.quantity * b.cost_per_animal;
+      const totalCost = feedCost + utilityCost + purchaseCost;
+
+      // Revenue side — sum of SalesInvoiceItem.amount for this batch (non-cancelled invoices only)
+      const revenue = b.salesInvoiceItems.reduce((sum, item) => sum + item.amount, 0);
+
+      // Derived metrics — guard against division by zero
+      const netProfit = revenue - totalCost;
+      const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+
       return {
         batch: b.batch_number,
         category: b.animal_category?.name || 'Unknown',
         animalCount: b.quantity,
         feedCost,
         utilityCost,
+        purchaseCost,
+        totalCost,
         revenue,
         netProfit,
         roi
       };
     });
-    
+
     return NextResponse.json({ data: { rows: data } });
   } catch (error) {
     console.error("batch-profitability report error:", error);

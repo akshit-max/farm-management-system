@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { isManager, isAccountant } from "@/lib/rbac";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManager(session) && !isAccountant(session)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   try {
     // 1. Cost per animal

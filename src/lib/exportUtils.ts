@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
-import PDFDocument from 'pdfkit';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export async function generateExcel(title: string, columns: any[], data: any[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
@@ -33,55 +34,34 @@ export async function generateExcel(title: string, columns: any[], data: any[]):
 export function generatePdf(title: string, columns: any[], data: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 30, size: 'A4' });
-      const chunks: Buffer[] = [];
-
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-
-      // Title
-      doc.fontSize(20).text('Farm ERP', { align: 'center' });
-      doc.fontSize(16).text(title, { align: 'center' });
-      doc.moveDown();
-      doc.fontSize(10).text(`Generated on: ${new Date().toLocaleString()}`, { align: 'right' });
-      doc.moveDown(2);
-
-      // Table Header
-      const startX = 30;
-      let currentY = doc.y;
+      const doc = new jsPDF();
       
-      doc.fontSize(10).font('Helvetica-Bold');
-      let currentX = startX;
-      columns.forEach(col => {
-        doc.text(col.header, currentX, currentY, { width: col.width || 100 });
-        currentX += (col.width || 100);
-      });
+      doc.setFontSize(20);
+      doc.text('Farm ERP', 14, 22);
       
-      doc.moveDown();
-      doc.moveTo(startX, doc.y).lineTo(565, doc.y).stroke();
-      doc.moveDown(0.5);
+      doc.setFontSize(14);
+      doc.text(title, 14, 32);
+      
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 42);
 
-      // Table Body
-      doc.font('Helvetica');
-      data.forEach((row, i) => {
-        currentX = startX;
-        currentY = doc.y;
-        
-        // Page break if needed
-        if (currentY > 750) {
-          doc.addPage();
-          currentY = doc.y;
-        }
+      const tableData = data.map(row => 
+        columns.map(col => row[col.key] !== undefined && row[col.key] !== null ? String(row[col.key]) : '')
+      );
+      
+      const head = [columns.map(c => c.header)];
 
-        columns.forEach(col => {
-          const val = row[col.key] !== undefined && row[col.key] !== null ? String(row[col.key]) : '';
-          doc.text(val, currentX, currentY, { width: col.width || 100 });
-          currentX += (col.width || 100);
-        });
-        doc.moveDown(0.5);
+      (doc as any).autoTable({
+        startY: 50,
+        head: head,
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [10, 49, 40] } // Farm ERP primary color
       });
 
-      doc.end();
+      const arrayBuffer = doc.output('arraybuffer');
+      const buffer = Buffer.from(arrayBuffer);
+      resolve(buffer);
     } catch (err) {
       reject(err);
     }

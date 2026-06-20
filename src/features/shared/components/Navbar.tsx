@@ -3,6 +3,7 @@
 import { Search, Bell, LogOut, ChevronDown, MapPin, Menu } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { InstallPWA } from './InstallPWA';
+import { NotificationBell } from './NotificationBell';
 
 export function Navbar({ toggleSidebar }: { toggleSidebar?: () => void }) {
   const { data: session } = useSession();
@@ -41,9 +42,7 @@ export function Navbar({ toggleSidebar }: { toggleSidebar?: () => void }) {
           />
         </div>
 
-        <button className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors relative">
-          <Bell className="w-[20px] h-[20px]" />
-        </button>
+        <NotificationBell />
         
         <div className="flex items-center gap-3 pl-2 md:pl-5 md:border-l border-gray-200 ml-1">
           {/* Dynamic avatar using user's initial */}

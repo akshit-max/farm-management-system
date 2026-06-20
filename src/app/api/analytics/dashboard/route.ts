@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
     const totalExpenses = manualExpenses + feedCost + waterCost + elecCost;
     const netProfit = revenue - totalExpenses;
     
-    const totalReceivables = (allSales._sum.total || 0) - (allPayments._sum.amount || 0);
+    const totalReceivables = Math.max(0, (allSales._sum.total || 0) - (allPayments._sum.amount || 0));
 
     // Inventory Metrics
     const inventoryQuantity = inventoryItems.reduce((sum, i) => sum + i.quantity, 0);
