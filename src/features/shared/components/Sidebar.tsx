@@ -13,6 +13,7 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', show: true },
+    { name: 'Analytics', icon: LineChart, href: '/dashboard/analytics', show: true },
     { name: 'Animals', icon: Users, href: '/dashboard/animal-categories', show: true },
     { name: 'Stages', icon: Activity, href: '/dashboard/stages', show: true },
     { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms', show: true },
