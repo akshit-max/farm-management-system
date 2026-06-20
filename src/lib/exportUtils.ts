@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export async function generateExcel(title: string, columns: any[], data: any[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
@@ -34,6 +34,7 @@ export async function generateExcel(title: string, columns: any[], data: any[]):
 export function generatePdf(title: string, columns: any[], data: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
+      // jsPDF v4: named export { jsPDF }, not default import
       const doc = new jsPDF();
       
       doc.setFontSize(20);
@@ -51,12 +52,13 @@ export function generatePdf(title: string, columns: any[], data: any[]): Promise
       
       const head = [columns.map(c => c.header)];
 
-      (doc as any).autoTable({
+      // jspdf-autotable v5: use autoTable(doc, options) — not doc.autoTable()
+      autoTable(doc, {
         startY: 50,
         head: head,
         body: tableData,
         theme: 'grid',
-        headStyles: { fillColor: [10, 49, 40] } // Farm ERP primary color
+        headStyles: { fillColor: [10, 49, 40] },
       });
 
       const arrayBuffer = doc.output('arraybuffer');

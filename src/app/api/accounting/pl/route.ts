@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { isManager, isAccountant } from "@/lib/rbac";
+import { resolveDateRange } from "@/lib/dateUtils";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -14,21 +15,11 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") || "all";
 
-  let dateFilter: any = undefined;
-  const now = new Date();
-  
-  if (period === "today") {
-    const start = new Date(now.setHours(0,0,0,0));
-    dateFilter = { gte: start };
-  } else if (period === "week") {
-    const start = new Date(now);
-    start.setDate(now.getDate() - now.getDay());
-    start.setHours(0,0,0,0);
-    dateFilter = { gte: start };
-  } else if (period === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    dateFilter = { gte: start };
-  }
+  // For P&L, 'all' means no date restriction. For named periods, use shared helper.
+  const { dateFilter } = period === "all"
+    ? { dateFilter: undefined }
+    : resolveDateRange(period, searchParams.get("startDate"), searchParams.get("endDate"));
+
 
   try {
     const [sales, expenses, feed, water, electricity] = await Promise.all([

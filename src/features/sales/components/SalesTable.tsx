@@ -17,7 +17,7 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [cancelId, setCancelId] = useState<string | null>(null);
+  const [cancelInvoice, setCancelInvoice] = useState<{id: string, hasPayments: boolean} | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const { canMutate, role } = useRBAC();
   const canManageSales = canMutate || role === "Accountant";
@@ -42,10 +42,10 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
   }, [keyIndex, showCancelled]);
 
   const confirmCancel = async () => {
-    if (!cancelId) return;
+    if (!cancelInvoice) return;
     setIsCancelling(true);
     try {
-      const res = await fetch(`/api/sales/${cancelId}/cancel`, { method: "POST" });
+      const res = await fetch(`/api/sales/${cancelInvoice.id}/cancel`, { method: "POST" });
       if (res.ok) {
         toast.success("Invoice cancelled. Inventory restored.");
         fetchSales();
@@ -57,7 +57,7 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
       toast.error("Network error");
     }
     setIsCancelling(false);
-    setCancelId(null);
+    setCancelInvoice(null);
   };
 
   const columns = [
@@ -112,7 +112,7 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
                   <Edit className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setCancelId(info.row.original.id)}
+                  onClick={() => setCancelInvoice({ id: info.row.original.id, hasPayments: info.row.original.payment_status !== "PENDING" })}
                   className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                   title="Cancel Invoice"
                 >
@@ -221,12 +221,16 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
       )}
 
       <ConfirmModal
-        isOpen={!!cancelId}
+        isOpen={!!cancelInvoice}
         title="Cancel Invoice"
-        message="Are you sure you want to cancel this invoice? All sold animal quantities will be restored back to their batches. This cannot be undone."
+        message={
+          cancelInvoice?.hasPayments
+            ? "This invoice contains recorded payments. Cancelling will restore inventory and reverse all linked payments. This cannot be undone."
+            : "Are you sure you want to cancel this invoice? All sold animal quantities will be restored back to their batches. This cannot be undone."
+        }
         isLoading={isCancelling}
         onConfirm={confirmCancel}
-        onCancel={() => setCancelId(null)}
+        onCancel={() => setCancelInvoice(null)}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit";
 import { isManager, isAccountant } from "@/lib/rbac";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const itemSchema = z.object({
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
       }
 
       return invoice;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     await logAudit(session.user.id, farmId, "CREATE", "SalesInvoice", result.id);
     return NextResponse.json(result, { status: 201 });

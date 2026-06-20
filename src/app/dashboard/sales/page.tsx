@@ -18,19 +18,17 @@ export default function SalesPage() {
 
   const fetchMetrics = async () => {
     try {
-      // Always fetch only active invoices for metrics
-      const res = await fetch(`/api/sales?showCancelled=false`);
+      const res = await fetch(`/api/analytics/sales-kpis`);
       if (res.ok) {
         const json = await res.json();
-        const invoices = json.data || [];
-        const activeOnly = invoices.filter((inv: any) => inv.status === "ACTIVE");
-        let total = 0; let pending = 0; let paid = 0;
-        activeOnly.forEach((inv: any) => {
-          total += inv.total;
-          if (inv.payment_status === "PENDING" || inv.payment_status === "PARTIAL") pending += inv.total;
-          if (inv.payment_status === "PAID") paid += inv.total;
-        });
-        setMetrics({ total, pending, paid, invoices: activeOnly.length });
+        if (json.data) {
+          setMetrics({
+            total: json.data.total,
+            pending: json.data.pending,
+            paid: json.data.paid,
+            invoices: json.data.invoices,
+          });
+        }
       }
     } catch (err) {}
   };
@@ -73,15 +71,15 @@ export default function SalesPage() {
       {!isCreating && !editingInvoice && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-            <span className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Total Revenue</span>
+            <span className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">All-Time Revenue</span>
             <span className="text-2xl font-bold text-gray-900">₹{metrics.total.toFixed(2)}</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-2">Pending Revenue</span>
+            <span className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-2">All-Time Receivables</span>
             <span className="text-2xl font-bold text-gray-900">₹{metrics.pending.toFixed(2)}</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2">Paid Revenue</span>
+            <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2">All-Time Paid</span>
             <span className="text-2xl font-bold text-gray-900">₹{metrics.paid.toFixed(2)}</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col">

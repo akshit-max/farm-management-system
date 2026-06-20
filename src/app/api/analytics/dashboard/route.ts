@@ -1,50 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { isManager, isAccountant } from "@/lib/rbac";
+import { resolveDateRange } from "@/lib/dateUtils";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
   const farmId = session?.user?.farm_id;
   if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManager(session) && !isAccountant(session)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") || "month";
-  const startParam = searchParams.get("startDate");
-  const endParam = searchParams.get("endDate");
+  const { dateFilter } = resolveDateRange(period, searchParams.get("startDate"), searchParams.get("endDate"));
 
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-  const now = new Date();
-
-  if (startParam && endParam) {
-    startDate = new Date(startParam);
-    endDate = new Date(endParam);
-    endDate.setHours(23, 59, 59, 999);
-  } else if (period === "today") {
-    startDate = new Date(now.setHours(0,0,0,0));
-    endDate = new Date(now.setHours(23,59,59,999));
-  } else if (period === "week") {
-    startDate = new Date(now);
-    startDate.setDate(now.getDate() - now.getDay());
-    startDate.setHours(0,0,0,0);
-    endDate = new Date(now);
-    endDate.setHours(23,59,59,999);
-  } else if (period === "month") {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  } else if (period === "year") {
-    startDate = new Date(now.getFullYear(), 0, 1);
-    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-  }
-
-  // Helper for date filtering object
-  const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined;
   
   try {
     // 1. ANIMAL METRICS & ROOMS & STAGES
     const activeBatchesP = db.animalBatch.findMany({
       where: { farm_id: farmId, deleted_at: null, status: "ACTIVE" },
       include: { animal_category: true, room: true, current_stage: true }
+    });
+
+    const allBatchesP = db.animalBatch.findMany({
+      where: { farm_id: farmId, deleted_at: null }
     });
 
     const mortalitiesP = db.mortality.findMany({
@@ -128,11 +109,11 @@ export async function GET(req: NextRequest) {
     // We'll estimate supplier distribution based on what we have.
 
     const [
-      activeBatches, mortalities, feedConsumptions, waterUsages, elecUsages,
+      activeBatches, allBatches, mortalities, feedConsumptions, waterUsages, elecUsages,
       waterTrend, elecTrend, salesInvoices, allSales, allPayments, expenses,
       inventoryItems, paymentsDetail, slaughterRecords, feedTypes
     ] = await Promise.all([
-      activeBatchesP, mortalitiesP, feedConsumptionsP, waterUsagesP, elecUsagesP,
+      activeBatchesP, allBatchesP, mortalitiesP, feedConsumptionsP, waterUsagesP, elecUsagesP,
       waterTrendP, elecTrendP, salesInvoicesP, allSalesP, allPaymentsP, expensesP,
       inventoryItemsP, paymentsDetailP, slaughterRecordsP, feedTypesP
     ]);
@@ -367,8 +348,8 @@ export async function GET(req: NextRequest) {
 
     // 2. Animal Growth Trend (Arrivals - Mortalities - Slaughters)
     const animalGrowthEvents: { date: string, diff: number }[] = [];
-    activeBatches.forEach(b => {
-      animalGrowthEvents.push({ date: new Date(b.arrival_date).toISOString().split('T')[0], diff: b.quantity });
+    allBatches.forEach(b => {
+      animalGrowthEvents.push({ date: new Date(b.arrival_date).toISOString().split('T')[0], diff: b.initial_quantity });
     });
     mortalities.forEach(m => {
       animalGrowthEvents.push({ date: new Date(m.date).toISOString().split('T')[0], diff: -m.quantity });

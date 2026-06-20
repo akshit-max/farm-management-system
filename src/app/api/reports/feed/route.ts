@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { isManager, isAccountant } from "@/lib/rbac";
+import { resolveDateRange } from "@/lib/dateUtils";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -13,35 +14,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") || "month";
-  const startParam = searchParams.get("startDate");
-  const endParam = searchParams.get("endDate");
+  const { dateFilter } = resolveDateRange(period, searchParams.get("startDate"), searchParams.get("endDate"));
 
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-  const now = new Date();
-
-  if (startParam && endParam) {
-    startDate = new Date(startParam);
-    endDate = new Date(endParam);
-    endDate.setHours(23, 59, 59, 999);
-  } else if (period === "today") {
-    startDate = new Date(now.setHours(0,0,0,0));
-    endDate = new Date(now.setHours(23,59,59,999));
-  } else if (period === "week") {
-    startDate = new Date(now);
-    startDate.setDate(now.getDate() - now.getDay());
-    startDate.setHours(0,0,0,0);
-    endDate = new Date(now);
-    endDate.setHours(23,59,59,999);
-  } else if (period === "month") {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  } else if (period === "year") {
-    startDate = new Date(now.getFullYear(), 0, 1);
-    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-  }
-
-  const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined;
 
   try {
     const [feed, batches] = await Promise.all([

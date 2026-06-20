@@ -11,37 +11,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const period = searchParams.get("period") || "month";
-  const startParam = searchParams.get("startDate");
-  const endParam = searchParams.get("endDate");
-
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-  const now = new Date();
-
-  if (startParam && endParam) {
-    startDate = new Date(startParam);
-    endDate = new Date(endParam);
-    endDate.setHours(23, 59, 59, 999);
-  } else if (period === "today") {
-    startDate = new Date(now.setHours(0,0,0,0));
-    endDate = new Date(now.setHours(23,59,59,999));
-  } else if (period === "week") {
-    startDate = new Date(now);
-    startDate.setDate(now.getDate() - now.getDay());
-    startDate.setHours(0,0,0,0);
-    endDate = new Date(now);
-    endDate.setHours(23,59,59,999);
-  } else if (period === "month") {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  } else if (period === "year") {
-    startDate = new Date(now.getFullYear(), 0, 1);
-    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-  }
-
-  const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined;
+  // NOTE: FeedType records do not carry transaction timestamps, so supplier ranking
+  // cannot be meaningfully filtered by a date range. This report is intentionally
+  // ALL-TIME and shows the total number of feed types linked to each supplier.
+  // The UI period selector is not applicable to this report.
 
   try {
     const feedTypes = await db.feedType.findMany({
@@ -54,13 +27,13 @@ export async function GET(req: NextRequest) {
       const sName = f.supplier?.company_name || 'Unknown';
       if (!sMap[sName]) sMap[sName] = { supplier: sName, linkedFeedTypes: 0, usageFreq: 0 };
       sMap[sName].linkedFeedTypes++;
-      sMap[sName].usageFreq++; 
+      sMap[sName].usageFreq++;
     });
 
     const rows = Object.values(sMap).sort((a: any, b: any) => b.usageFreq - a.usageFreq);
     const distribution = rows.map((r: any) => ({ name: r.supplier, value: r.usageFreq })).slice(0, 10);
 
-    return NextResponse.json({ data: { rows, charts: { distribution } } });
+    return NextResponse.json({ data: { rows, charts: { distribution }, meta: { isAllTime: true } } });
   } catch (error) {
     console.error("suppliers report error:", error);
     return NextResponse.json({ error: "Failed to fetch report data" }, { status: 500 });

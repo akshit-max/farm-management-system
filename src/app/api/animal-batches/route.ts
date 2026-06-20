@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
         current_stage_id: parsedData.current_stage_id,
         arrival_date: new Date(parsedData.arrival_date),
         quantity: parsedData.quantity,
+        initial_quantity: parsedData.quantity,
         initial_weight: parsedData.initial_weight,
         average_weight: parsedData.average_weight,
         cost_per_animal: parsedData.cost_per_animal,

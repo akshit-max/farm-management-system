@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { isManager, isAccountant } from "@/lib/rbac";
+import { resolveDateRange } from "@/lib/dateUtils";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -11,37 +12,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const period = searchParams.get("period") || "month";
-  const startParam = searchParams.get("startDate");
-  const endParam = searchParams.get("endDate");
-
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-  const now = new Date();
-
-  if (startParam && endParam) {
-    startDate = new Date(startParam);
-    endDate = new Date(endParam);
-    endDate.setHours(23, 59, 59, 999);
-  } else if (period === "today") {
-    startDate = new Date(now.setHours(0,0,0,0));
-    endDate = new Date(now.setHours(23,59,59,999));
-  } else if (period === "week") {
-    startDate = new Date(now);
-    startDate.setDate(now.getDate() - now.getDay());
-    startDate.setHours(0,0,0,0);
-    endDate = new Date(now);
-    endDate.setHours(23,59,59,999);
-  } else if (period === "month") {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  } else if (period === "year") {
-    startDate = new Date(now.getFullYear(), 0, 1);
-    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-  }
-
-  const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined;
 
   try {
     const [batches, waterUsages, elecUsages] = await Promise.all([
@@ -51,12 +21,10 @@ export async function GET(req: NextRequest) {
           feedConsumptions: { where: { deleted_at: null } },
           slaughterRecords: true,
           animal_category: true,
-          // Direct traceability: AnimalBatch → SalesInvoiceItem → SalesInvoice
-          // batch_id FK on SalesInvoiceItem links each line item back to the batch it came from.
           salesInvoiceItems: {
             where: {
               deleted_at: null,
-              invoice: { deleted_at: null } // exclude items on cancelled invoices
+              invoice: { deleted_at: null }
             },
             include: { invoice: true }
           }
@@ -69,17 +37,28 @@ export async function GET(req: NextRequest) {
     const data = batches.map(b => {
       // Cost side
       const feedCost = b.feedConsumptions.reduce((sum, f) => sum + f.cost, 0);
-      // Utility costs are room-level; attribute proportionally to batches in the same room.
-      // Since a room may host multiple batches, we assign the full room utility cost to each batch
-      // that occupied that room. This is the only available data — per-batch utility is not tracked.
+      // KNOWN LIMITATION — Room-Level Utility Cost Attribution
+      // Water and electricity costs are tracked at the room level, not the individual
+      // batch level. When a single room hosts multiple concurrent batches, the full
+      // room-level utility cost is attributed to EACH batch independently.
+      //
+      // Example: Room A utility cost = ₹1,000. Batch A in Room A → attributed ₹1,000.
+      //          Batch B also in Room A → also attributed ₹1,000.
+      //          Total attributed = ₹2,000 vs actual cost of ₹1,000.
+      //
+      // Impact: Per-batch totalCost and ROI may be overstated in shared-room scenarios.
+      // This is the only available data granularity — per-batch utility metering is not
+      // tracked in the current schema. A proportional allocation engine can be implemented
+      // in a future schema extension when per-batch utility tracking is added.
       const waterCost = waterUsages
         .filter(w => w.room_id === b.room_id)
         .reduce((sum, w) => sum + w.total_cost, 0);
       const elecCost = elecUsages
         .filter(e => e.room_id === b.room_id)
         .reduce((sum, e) => sum + e.total_cost, 0);
+
       const utilityCost = waterCost + elecCost;
-      const purchaseCost = b.quantity * b.cost_per_animal;
+      const purchaseCost = b.initial_quantity * b.cost_per_animal;
       const totalCost = feedCost + utilityCost + purchaseCost;
 
       // Revenue side — sum of SalesInvoiceItem.amount for this batch (non-cancelled invoices only)

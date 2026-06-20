@@ -10,19 +10,11 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 export default function BatchProfitabilityPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
-  const [period, setPeriod] = useState("month");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      let url = `/api/reports/batch-profitability?period=${period}`;
-      if (period === "custom" && customStart && customEnd) {
-        url += `&startDate=${customStart}&endDate=${customEnd}`;
-      }
-      
-      const res = await fetch(url);
+      const res = await fetch(`/api/reports/batch-profitability`);
       if (res.ok) {
         const json = await res.json();
         setData(json.data);
@@ -36,11 +28,7 @@ export default function BatchProfitabilityPage() {
     }
   };
 
-  useEffect(() => {
-    if (period !== "custom" || (period === "custom" && customStart && customEnd)) {
-      fetchData();
-    }
-  }, [period, customStart, customEnd]);
+  useEffect(() => { fetchData(); }, []);
 
   const handleExport = async (format: 'excel' | 'pdf') => {
     toast.loading(`Exporting ${format.toUpperCase()}...`, { id: 'export' });
@@ -50,7 +38,7 @@ export default function BatchProfitabilityPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: 'Batch Profitability Report',
-          columns: [{ header: 'Batch', key: 'batch' }, { header: 'Category', key: 'category' }, { header: 'Animal Count', key: 'animalCount' }, { header: 'Feed Cost', key: 'feedCost' }, { header: 'Utility Cost', key: 'utilityCost' }, { header: 'Revenue', key: 'revenue' }, { header: 'Net Profit', key: 'netProfit' }, { header: 'ROI %', key: 'roi' }],
+          columns: [{ header: 'Batch', key: 'batch' }, { header: 'Category', key: 'category' }, { header: 'Animal Count', key: 'animalCount' }, { header: 'Purchase Cost', key: 'purchaseCost' }, { header: 'Feed Cost', key: 'feedCost' }, { header: 'Utility Cost', key: 'utilityCost' }, { header: 'Revenue', key: 'revenue' }, { header: 'Net Profit', key: 'netProfit' }, { header: 'ROI %', key: 'roi' }],
           data: data?.rows || []
         })
       });
@@ -86,27 +74,9 @@ export default function BatchProfitabilityPage() {
           <h1 className="text-2xl font-bold text-gray-900">Batch Profitability Report</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-brand-primary/20 outline-none"
-          >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="year">This Year</option>
-            <option value="custom">Custom Range</option>
-          </select>
-          
-          {period === "custom" && (
-            <div className="flex items-center gap-2">
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="px-3 py-2 border rounded-lg text-sm" />
-              <span className="text-gray-400">-</span>
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="px-3 py-2 border rounded-lg text-sm" />
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 border-l pl-3 ml-2 border-gray-200">
+          <span className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">
+            All-Time Report
+          </span>
             <button onClick={() => handleExport('excel')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-medium transition-colors">
               <Download className="w-4 h-4" /> Excel
             </button>
@@ -115,7 +85,6 @@ export default function BatchProfitabilityPage() {
             </button>
           </div>
         </div>
-      </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -125,6 +94,7 @@ export default function BatchProfitabilityPage() {
                 <th className="px-6 py-4 font-semibold">Batch</th>
                 <th className="px-6 py-4 font-semibold">Category</th>
                 <th className="px-6 py-4 font-semibold">Animal Count</th>
+                <th className="px-6 py-4 font-semibold">Purchase Cost (₹)</th>
                 <th className="px-6 py-4 font-semibold">Feed Cost (₹)</th>
                 <th className="px-6 py-4 font-semibold">Utility Cost (₹)</th>
                 <th className="px-6 py-4 font-semibold">Revenue (₹)</th>
@@ -138,6 +108,7 @@ export default function BatchProfitabilityPage() {
                   <td className="px-6 py-4 font-medium text-gray-900">{row.batch}</td>
                   <td className="px-6 py-4">{row.category}</td>
                   <td className="px-6 py-4">{row.animalCount}</td>
+                  <td className="px-6 py-4">₹{row.purchaseCost?.toFixed(2)}</td>
                   <td className="px-6 py-4">₹{row.feedCost?.toFixed(2)}</td>
                   <td className="px-6 py-4">₹{row.utilityCost?.toFixed(2)}</td>
                   <td className="px-6 py-4 font-medium text-emerald-600">₹{row.revenue?.toFixed(2)}</td>

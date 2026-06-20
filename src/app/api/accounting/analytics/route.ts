@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     const batchROI = completedBatches.map(batch => {
       const batchFeedCost = batch.feedConsumptions.reduce((sum, f) => sum + f.cost, 0);
       const batchWaterCost = batch.waterUsages.reduce((sum, w) => sum + w.total_cost, 0);
-      const batchInitialCost = batch.quantity * batch.cost_per_animal; // roughly
+      const batchInitialCost = batch.initial_quantity * batch.cost_per_animal; // roughly
       const totalBatchCost = batchFeedCost + batchWaterCost + batchInitialCost;
       
       const batchRevenue = batch.salesInvoiceItems.reduce((sum, s) => sum + s.amount, 0);

@@ -232,6 +232,7 @@ model AnimalBatch {
 
   arrival_date       DateTime
   quantity           Int
+  initial_quantity   Int @default(0)
   initial_weight     Float
   average_weight     Float
   cost_per_animal    Float
