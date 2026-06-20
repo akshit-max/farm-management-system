@@ -11,31 +11,71 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
   const isManager = userRole === "Manager" || isOwner;
   const isAccountant = userRole === "Accountant" || isOwner;
 
-  const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', show: true },
-    { name: 'Analytics', icon: LineChart, href: '/dashboard/analytics', show: true },
-    { name: 'Reports', icon: FileText, href: '/dashboard/reports', show: isManager || isAccountant },
-    { name: 'Animals', icon: Users, href: '/dashboard/animal-categories', show: true },
-    { name: 'Stages', icon: Activity, href: '/dashboard/stages', show: true },
-    { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms', show: true },
-    { name: 'Batches', icon: Layers, href: '/dashboard/animal-batches', show: true },
-    { name: 'Slaughter', icon: Activity, href: '/dashboard/slaughter', show: true },
-    { name: 'Meat Inventory', icon: Package, href: '/dashboard/inventory', show: true },
-    { name: 'Feed Types', icon: FileText, href: '/dashboard/feed-types', show: true },
-    { name: 'Feed Consumption', icon: Activity, href: '/dashboard/feed-consumption', show: true },
-    { name: 'Water Usage', icon: Droplets, href: '/dashboard/water-usage', show: true },
-    { name: 'Utility Meters', icon: Zap, href: '/dashboard/utility-meters', show: true },
-    { name: 'Electricity Usage', icon: Activity, href: '/dashboard/electricity-usage', show: true },
-    { name: 'Expenses', icon: FileText, href: '/dashboard/expenses', show: true },
-    { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales', show: isManager || isAccountant },
-    { name: 'Accounts', icon: BookOpen, href: '/dashboard/accounts', show: isOwner || isAccountant },
-    { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager || isAccountant },
-    { name: 'CRM (Customers)', icon: Users, href: '/dashboard/customers', show: isManager || isAccountant },
-    { name: 'Profit & Loss', icon: TrendingUp, href: '/dashboard/reports/pl', show: isManager || isAccountant },
-    { name: 'Cost Analytics', icon: LineChart, href: '/dashboard/reports/analytics', show: isManager || isAccountant },
-    { name: 'User Management', icon: UserCog, href: '/dashboard/users', show: isOwner },
-    { name: 'Settings', icon: Settings, href: '/dashboard/settings', show: true },
-  ].filter(item => item.show);
+  const menuGroups = [
+    {
+      title: "Overview",
+      items: [
+        { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', show: true },
+      ]
+    },
+    {
+      title: "Operations",
+      items: [
+        { name: 'Animals', icon: Users, href: '/dashboard/animal-categories', show: true },
+        { name: 'Stages', icon: Activity, href: '/dashboard/stages', show: true },
+        { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms', show: true },
+        { name: 'Batches', icon: Layers, href: '/dashboard/animal-batches', show: true },
+      ]
+    },
+    {
+      title: "Processing",
+      items: [
+        { name: 'Slaughter', icon: Activity, href: '/dashboard/slaughter', show: true },
+        { name: 'Meat Inventory', icon: Package, href: '/dashboard/inventory', show: true },
+      ]
+    },
+    {
+      title: "Feed & Utilities",
+      items: [
+        { name: 'Feed Types', icon: FileText, href: '/dashboard/feed-types', show: true },
+        { name: 'Feed Consumption', icon: Activity, href: '/dashboard/feed-consumption', show: true },
+        { name: 'Water Usage', icon: Droplets, href: '/dashboard/water-usage', show: true },
+        { name: 'Utility Meters', icon: Zap, href: '/dashboard/utility-meters', show: true },
+        { name: 'Electricity Usage', icon: Activity, href: '/dashboard/electricity-usage', show: true },
+      ]
+    },
+    {
+      title: "Sales & Finance",
+      items: [
+        { name: 'Sales', icon: ShoppingCart, href: '/dashboard/sales', show: isManager || isAccountant },
+        { name: 'Accounts', icon: BookOpen, href: '/dashboard/accounts', show: isOwner || isAccountant },
+        { name: 'Expenses', icon: FileText, href: '/dashboard/expenses', show: true },
+      ]
+    },
+    {
+      title: "Analytics & Reports",
+      items: [
+        { name: 'Analytics', icon: LineChart, href: '/dashboard/analytics', show: true },
+        { name: 'Reports', icon: FileText, href: '/dashboard/reports', show: isManager || isAccountant },
+        { name: 'Profit & Loss', icon: TrendingUp, href: '/dashboard/reports/pl', show: isManager || isAccountant },
+        { name: 'Cost Analytics', icon: LineChart, href: '/dashboard/reports/analytics', show: isManager || isAccountant },
+      ]
+    },
+    {
+      title: "CRM",
+      items: [
+        { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager || isAccountant },
+        { name: 'CRM (Customers)', icon: Users, href: '/dashboard/customers', show: isManager || isAccountant },
+      ]
+    },
+    {
+      title: "Administration",
+      items: [
+        { name: 'User Management', icon: UserCog, href: '/dashboard/users', show: isOwner },
+        { name: 'Settings', icon: Settings, href: '/dashboard/settings', show: true },
+      ]
+    }
+  ];
 
   return (
     <aside className={`bg-[var(--color-brand-sidebar)] text-gray-300 flex flex-col h-full transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[260px] hidden md:flex'}`}>
@@ -46,29 +86,48 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
         {!isCollapsed && <span className="text-white text-xl font-bold tracking-wide whitespace-nowrap">Farm ERP</span>}
       </div>
       
-      <nav className="flex-1 px-3 py-6 space-y-1 overflow-x-hidden overflow-y-auto custom-scrollbar">
-        {!isCollapsed && (
-          <div className="px-3 mb-2 text-xs font-semibold text-[#3a685c] uppercase tracking-wider">
-            Main Menu
-          </div>
-        )}
-        
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-x-hidden overflow-y-auto custom-scrollbar">
+        {menuGroups.map((group, idx) => {
+          const visibleItems = group.items.filter(i => i.show);
+          if (visibleItems.length === 0) return null;
+          
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              title={isCollapsed ? item.name : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group text-[15px] font-medium ${
-                isActive 
-                  ? 'bg-[var(--color-brand-sidebar-active)] text-white' 
-                  : 'hover:bg-[var(--color-brand-sidebar-hover)] hover:text-white'
-              } ${isCollapsed ? 'justify-center' : ''}`}
-            >
-              <item.icon className={`w-[18px] h-[18px] shrink-0 transition-opacity ${isActive ? 'opacity-100 text-[var(--color-brand-primary)]' : 'opacity-70 group-hover:opacity-100'}`} />
-              {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
-            </Link>
+            <div key={idx} className="space-y-1">
+              {!isCollapsed && (
+                <div className="px-3 mb-1.5 mt-2 text-[10px] font-bold text-[#3a685c] uppercase tracking-wider">
+                  {group.title}
+                </div>
+              )}
+              {isCollapsed && idx !== 0 && <div className="w-8 h-px bg-[#0a3128] mx-auto my-3" />}
+              
+              {visibleItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    title={isCollapsed ? item.name : undefined}
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors group text-[14px] font-medium ${
+                      isActive 
+                        ? 'bg-[var(--color-brand-sidebar-active)] text-white' 
+                        : 'hover:bg-[var(--color-brand-sidebar-hover)] hover:text-white'
+                    } ${isCollapsed ? 'justify-center py-2' : ''}`}
+                  >
+                    <item.icon className={`w-[16px] h-[16px] shrink-0 transition-opacity ${isActive ? 'opacity-100 text-[var(--color-brand-primary)]' : 'opacity-70 group-hover:opacity-100'}`} />
+                    {!isCollapsed && (
+                      <>
+                        <span className="whitespace-nowrap">{item.name}</span>
+                        {isActive && (
+                          <span className="ml-auto text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[var(--color-brand-primary)]/20 text-[var(--color-brand-primary)]">
+                            Active
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
