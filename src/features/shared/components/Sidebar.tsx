@@ -14,6 +14,7 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', show: true },
     { name: 'Analytics', icon: LineChart, href: '/dashboard/analytics', show: true },
+    { name: 'Reports', icon: FileText, href: '/dashboard/reports', show: isManager || isAccountant },
     { name: 'Animals', icon: Users, href: '/dashboard/animal-categories', show: true },
     { name: 'Stages', icon: Activity, href: '/dashboard/stages', show: true },
     { name: 'Rooms & Structure', icon: Grid, href: '/dashboard/rooms', show: true },
@@ -32,7 +33,6 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
     { name: 'CRM (Customers)', icon: Users, href: '/dashboard/customers', show: isManager || isAccountant },
     { name: 'Profit & Loss', icon: TrendingUp, href: '/dashboard/reports/pl', show: isManager || isAccountant },
     { name: 'Cost Analytics', icon: LineChart, href: '/dashboard/reports/analytics', show: isManager || isAccountant },
-    { name: 'Reports & Analytics', icon: LineChart, href: '/dashboard/reports', show: isManager || isAccountant },
     { name: 'User Management', icon: UserCog, href: '/dashboard/users', show: isOwner },
     { name: 'Settings', icon: Settings, href: '/dashboard/settings', show: true },
   ].filter(item => item.show);
