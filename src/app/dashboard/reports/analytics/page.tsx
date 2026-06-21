@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Activity, Percent, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Activity, Percent, ArrowUpRight, ArrowDownRight, Download } from "lucide-react";
 
 export default function CostAnalyticsPage() {
   const [data, setData] = useState<any>(null);
@@ -26,6 +26,64 @@ export default function CostAnalyticsPage() {
     fetchAnalytics();
   }, []);
 
+  const handleExport = async (format: 'excel' | 'pdf') => {
+    toast.loading(`Exporting ${format.toUpperCase()}...`, { id: 'export' });
+    try {
+      const topBatchRows = (data?.top_batches || []).map((b: any) => ({
+        category: 'Top Performing',
+        batch: b.batch_number,
+        revenue: b.revenue,
+        expenses: b.expenses,
+        profit: b.profit,
+        roi: `${b.roi_percentage.toFixed(1)}%`
+      }));
+      
+      const bottomBatchRows = (data?.bottom_batches || []).map((b: any) => ({
+        category: 'Lowest Performing',
+        batch: b.batch_number,
+        revenue: b.revenue,
+        expenses: b.expenses,
+        profit: b.profit,
+        roi: `${b.roi_percentage.toFixed(1)}%`
+      }));
+
+      const res = await fetch(`/api/reports/export/${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Cost Analytics Report',
+          columns: [
+            { header: 'Category', key: 'category' },
+            { header: 'Batch', key: 'batch' },
+            { header: 'Revenue (₹)', key: 'revenue' },
+            { header: 'Expenses (₹)', key: 'expenses' },
+            { header: 'Profit (₹)', key: 'profit' },
+            { header: 'ROI', key: 'roi' }
+          ],
+          data: [
+            { category: 'KPI', batch: 'Avg Cost Per Live Animal', revenue: data?.cost_per_animal || 0, expenses: '', profit: '', roi: '' },
+            { category: 'KPI', batch: 'Avg Cost Per KG Meat', revenue: data?.cost_per_kg || 0, expenses: '', profit: '', roi: '' },
+            { category: '---', batch: '---', revenue: '---', expenses: '---', profit: '---', roi: '---' },
+            ...topBatchRows,
+            ...bottomBatchRows
+          ]
+        })
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Cost_Analytics.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success('Export completed', { id: 'export' });
+    } catch (err) {
+      toast.error('Export failed', { id: 'export' });
+    }
+  };
+
   if (isLoading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div>;
   if (!data) return <div className="p-6">Data not found.</div>;
 
@@ -33,9 +91,19 @@ export default function CostAnalyticsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Cost Analytics</h1>
-        <p className="text-gray-500 text-sm mt-1">Deep dive into unit economics and batch performance.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Cost Analytics</h1>
+          <p className="text-gray-500 text-sm mt-1">Deep dive into unit economics and batch performance.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => handleExport('excel')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-medium transition-colors">
+            <Download className="w-4 h-4" /> Excel
+          </button>
+          <button onClick={() => handleExport('pdf')} className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium transition-colors">
+            <Download className="w-4 h-4" /> PDF
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -81,7 +149,7 @@ export default function CostAnalyticsPage() {
                   <p className="text-xs text-gray-500">₹{b.profit.toLocaleString()} Profit</p>
                 </div>
               </div>
-            )) : <div className="p-4 text-gray-500 text-sm">No completed batches found.</div>}
+            )) : <div className="p-4 text-gray-500 text-sm">No Positive ROI Batches</div>}
           </div>
         </div>
 
@@ -105,7 +173,7 @@ export default function CostAnalyticsPage() {
                   <p className="text-xs text-gray-500">₹{b.profit.toLocaleString()} Profit</p>
                 </div>
               </div>
-            )) : <div className="p-4 text-gray-500 text-sm">No completed batches found.</div>}
+            )) : <div className="p-4 text-gray-500 text-sm">No Loss-Making Batches</div>}
           </div>
         </div>
       </div>

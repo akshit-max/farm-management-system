@@ -59,6 +59,10 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
         { name: 'Reports', icon: FileText, href: '/dashboard/reports', show: isManager || isAccountant },
         { name: 'Profit & Loss', icon: TrendingUp, href: '/dashboard/reports/pl', show: isManager || isAccountant },
         { name: 'Cost Analytics', icon: LineChart, href: '/dashboard/reports/analytics', show: isManager || isAccountant },
+        { name: 'Cash Flow', icon: FileText, href: '/dashboard/reports/cash-flow', show: isManager || isAccountant },
+        { name: 'Balance Sheet', icon: FileText, href: '/dashboard/reports/balance-sheet', show: isManager || isAccountant },
+        { name: 'Room Efficiency', icon: Activity, href: '/dashboard/reports/room-efficiency', show: isManager || isAccountant },
+        { name: 'Stage Performance', icon: Activity, href: '/dashboard/reports/stage-performance', show: isManager || isAccountant },
       ]
     },
     {
@@ -66,6 +70,10 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
       items: [
         { name: 'CRM (Suppliers)', icon: Users, href: '/dashboard/suppliers', show: isManager || isAccountant },
         { name: 'CRM (Customers)', icon: Users, href: '/dashboard/customers', show: isManager || isAccountant },
+        { name: 'CRM Ratings', icon: Activity, href: '/dashboard/crm/ratings', show: isManager || isAccountant },
+        { name: 'Payment Terms', icon: Settings, href: '/dashboard/crm/payment-terms', show: isManager || isAccountant },
+        { name: 'Client Ranking', icon: TrendingUp, href: '/dashboard/crm/client-ranking', show: isManager || isAccountant },
+        { name: 'Supplier Compare', icon: Users, href: '/dashboard/crm/supplier-comparison', show: isManager || isAccountant },
       ]
     },
     {

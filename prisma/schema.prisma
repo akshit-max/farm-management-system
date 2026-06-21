@@ -397,6 +397,14 @@ model Supplier {
   supplier_type  String // Animal, Feed, Medicine, Utility, Other
   notes          String?
   status         String  @default("ACTIVE")
+  
+  // Phase 13 CRM & Payment Terms
+  rating_override        Int?
+  rating_override_reason String?
+  rating_override_by     String? @db.Uuid
+  rating_override_at     DateTime?
+  credit_days            Int?    @default(0)
+  preferred_status       Boolean? @default(false)
 
   feed_types FeedType[]
 
@@ -422,6 +430,15 @@ model Customer {
   customer_type  String // Retail, Wholesale, Contract Buyer, Other
   notes          String?
   status         String  @default("ACTIVE")
+
+  // Phase 13 CRM & Payment Terms
+  rating_override        Int?
+  rating_override_reason String?
+  rating_override_by     String? @db.Uuid
+  rating_override_at     DateTime?
+  credit_limit           Float?  @default(0)
+  credit_days            Int?    @default(0)
+  risk_level             String? @default("LOW")
 
   sales_invoices SalesInvoice[]
   payments       CustomerPayment[]

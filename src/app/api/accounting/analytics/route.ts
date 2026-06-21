@@ -69,12 +69,15 @@ export async function GET(req: NextRequest) {
       };
     }).sort((a, b) => b.roi_percentage - a.roi_percentage);
 
+    const positiveROI = batchROI.filter(b => b.roi_percentage >= 0);
+    const negativeROI = batchROI.filter(b => b.roi_percentage < 0);
+
     return NextResponse.json({
       data: {
         cost_per_animal: costPerAnimal,
         cost_per_kg: costPerKg,
-        top_batches: batchROI.slice(0, 5),
-        bottom_batches: batchROI.slice(-5).reverse()
+        top_batches: positiveROI.slice(0, 5),
+        bottom_batches: negativeROI.reverse().slice(0, 5)
       }
     });
   } catch (error) {

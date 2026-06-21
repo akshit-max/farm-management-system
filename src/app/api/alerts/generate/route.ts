@@ -165,6 +165,60 @@ export async function POST(req: NextRequest) {
         });
         totalGenerated += res.count;
       }
+
+      // Phase 13: CRM Alerts
+      const crmAlerts: any[] = [];
+      const customers = await db.customer.findMany({
+        where: { farm_id: farmId, status: "ACTIVE" },
+        include: { sales_invoices: { where: { deleted_at: null }, include: { payments: { where: { deleted_at: null } } } } }
+      });
+
+      for (const c of customers) {
+        let outstandingBalance = 0;
+        
+        for (const inv of c.sales_invoices) {
+          const paid = inv.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+          const invBalance = inv.total - paid;
+          outstandingBalance += invBalance;
+
+          if (invBalance > 0 && c.credit_days && c.credit_days > 0) {
+            const daysSinceInvoice = (now.getTime() - new Date(inv.invoice_date).getTime()) / 86400000;
+            if (daysSinceInvoice > c.credit_days) {
+              crmAlerts.push({
+                farm_id: farmId,
+                title: 'Customer Payment Overdue',
+                description: `Customer ${c.company_name} has an overdue invoice (${inv.invoice_number}) by ${Math.round(daysSinceInvoice - c.credit_days)} days.`,
+                severity: 'WARNING',
+                type: 'CUSTOMER_PAYMENT_OVERDUE',
+                fingerprint: `CUST_OVERDUE_${c.id}_${inv.id}_${todayStr}`
+              });
+            }
+          }
+        }
+
+        if (c.credit_limit && c.credit_limit > 0 && outstandingBalance > c.credit_limit) {
+          crmAlerts.push({
+            farm_id: farmId,
+            title: 'Credit Limit Exceeded',
+            description: `Customer ${c.company_name} has exceeded their credit limit (Bal: ₹${outstandingBalance} / Limit: ₹${c.credit_limit}).`,
+            severity: 'CRITICAL',
+            type: 'CUSTOMER_CREDIT_LIMIT_EXCEEDED',
+            fingerprint: `CUST_LIMIT_${c.id}_${todayStr}`
+          });
+        }
+      }
+
+      // Supplier Overdue (Note: Schema lacks Supplier Invoices, so this is a placeholder if they ever add supplier_invoices)
+      // SUPPLIER_PAYMENT_OVERDUE
+      // The logic would mirror customer invoices but for expenses or purchases.
+
+      if (crmAlerts.length > 0) {
+        const res = await (db as any).notification.createMany({
+          data: crmAlerts,
+          skipDuplicates: true
+        });
+        totalGenerated += res.count;
+      }
     }
 
     return NextResponse.json({ success: true, generated: totalGenerated });
