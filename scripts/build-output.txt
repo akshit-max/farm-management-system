@@ -1,0 +1,150 @@
+
+> farm-management-system@0.1.0 build
+> prisma generate && next build
+
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to .\node_modules\@prisma\client in 272ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+▲ Next.js 16.2.9 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 18.7s
+  Running TypeScript ...
+  Finished TypeScript in 14.9s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/90) ...
+  Generating static pages using 7 workers (22/90) 
+  Generating static pages using 7 workers (44/90) 
+  Generating static pages using 7 workers (67/90) 
+✓ Generating static pages using 7 workers (90/90) in 804ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /api/accounting/analytics
+├ ƒ /api/accounting/pl
+├ ƒ /api/alerts
+├ ƒ /api/alerts/[id]/read
+├ ƒ /api/alerts/generate
+├ ƒ /api/alerts/mark-all-read
+├ ƒ /api/analytics/dashboard
+├ ƒ /api/analytics/sales-kpis
+├ ƒ /api/animal-batches
+├ ƒ /api/animal-batches/[id]
+├ ƒ /api/animal-categories
+├ ƒ /api/animal-categories/[id]
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/change-password
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/reset-password
+├ ƒ /api/auth/signup
+├ ƒ /api/customer-payments
+├ ƒ /api/customer-payments/[id]
+├ ƒ /api/customers
+├ ƒ /api/customers/[id]
+├ ƒ /api/customers/[id]/ledger
+├ ƒ /api/electricity-usage
+├ ƒ /api/electricity-usage/[id]
+├ ƒ /api/expenses
+├ ƒ /api/expenses/[id]
+├ ƒ /api/feed-consumption
+├ ƒ /api/feed-types
+├ ƒ /api/feed-types/[id]
+├ ƒ /api/inventory-items
+├ ƒ /api/inventory-items/[id]
+├ ƒ /api/mortalities
+├ ƒ /api/mortalities/[id]
+├ ƒ /api/reports/batch-profitability
+├ ƒ /api/reports/customers
+├ ƒ /api/reports/electricity
+├ ƒ /api/reports/export/excel
+├ ƒ /api/reports/export/pdf
+├ ƒ /api/reports/feed
+├ ƒ /api/reports/mortality
+├ ƒ /api/reports/suppliers
+├ ƒ /api/reports/water
+├ ƒ /api/roles
+├ ƒ /api/rooms
+├ ƒ /api/rooms/[id]
+├ ƒ /api/sales
+├ ƒ /api/sales/[id]
+├ ƒ /api/sales/[id]/cancel
+├ ƒ /api/security/audit-logs
+├ ƒ /api/security/backup
+├ ƒ /api/security/backup/restore
+├ ƒ /api/security/financial-periods
+├ ƒ /api/settings
+├ ƒ /api/slaughter-records
+├ ƒ /api/slaughter-records/[id]
+├ ƒ /api/stages
+├ ƒ /api/stages/[id]
+├ ƒ /api/suppliers
+├ ƒ /api/suppliers/[id]
+├ ƒ /api/users
+├ ƒ /api/users/[id]
+├ ƒ /api/utility-meters
+├ ƒ /api/utility-meters/[id]
+├ ƒ /api/vaccinations
+├ ƒ /api/vaccinations/[id]
+├ ƒ /api/water-usage
+├ ƒ /api/water-usage/[id]
+├ ƒ /dashboard
+├ ƒ /dashboard/accounts
+├ ƒ /dashboard/alerts
+├ ƒ /dashboard/analytics
+├ ƒ /dashboard/animal-batches
+├ ƒ /dashboard/animal-batches/[id]
+├ ƒ /dashboard/animal-categories
+├ ƒ /dashboard/crm
+├ ƒ /dashboard/customers
+├ ƒ /dashboard/customers/[id]
+├ ƒ /dashboard/electricity
+├ ƒ /dashboard/electricity-usage
+├ ƒ /dashboard/expenses
+├ ƒ /dashboard/feed
+├ ƒ /dashboard/feed-consumption
+├ ƒ /dashboard/feed-types
+├ ƒ /dashboard/inventory
+├ ƒ /dashboard/reports
+├ ƒ /dashboard/reports/analytics
+├ ƒ /dashboard/reports/batch-profitability
+├ ƒ /dashboard/reports/customers
+├ ƒ /dashboard/reports/electricity
+├ ƒ /dashboard/reports/feed
+├ ƒ /dashboard/reports/mortality
+├ ƒ /dashboard/reports/pl
+├ ƒ /dashboard/reports/suppliers
+├ ƒ /dashboard/reports/water
+├ ƒ /dashboard/rooms
+├ ƒ /dashboard/sales
+├ ƒ /dashboard/settings
+├ ƒ /dashboard/settings/security
+├ ƒ /dashboard/slaughter
+├ ƒ /dashboard/stages
+├ ƒ /dashboard/suppliers
+├ ƒ /dashboard/users
+├ ƒ /dashboard/utility-meters
+├ ƒ /dashboard/water
+├ ƒ /dashboard/water-usage
+├ ƒ /forgot-password
+├ ƒ /login
+├ ƒ /reset-password
+├ ƒ /signup
+└ ƒ /unauthorized
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+

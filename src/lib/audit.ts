@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { logAuditEvent } from "./auditLogger";
 
 export async function logAudit(
   userId: string | null | undefined,
@@ -8,16 +9,16 @@ export async function logAudit(
   entityId: string
 ) {
   try {
-    await db.auditLog.create({
-      data: {
-        user_id: userId || null,
-        farm_id: farmId || null,
-        action,
-        entity,
-        entity_id: entityId,
-      },
+    await logAuditEvent({
+      userId: userId || undefined,
+      farmId: farmId || undefined,
+      module: "SYSTEM",
+      action,
+      entityType: entity,
+      entityId,
+      severity: "INFO"
     });
   } catch (error) {
-    console.error("Failed to write audit log:", error);
+    console.error("Failed to write legacy audit log:", error);
   }
 }

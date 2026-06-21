@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager, isAccountant } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createExpenseSchema.parse(body);
 
+    await checkFinancialLock(farmId, parsedData.expense_date);
+
     const expense = await db.expense.create({
       data: {
         farm_id: farmId,
@@ -47,9 +50,21 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    await logAudit(session.user.id, farmId, "CREATE", "Expense", expense.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "EXPENSES",
+      action: "CREATE_EXPENSE",
+      entityType: "Expense",
+      entityId: expense.id,
+      severity: "INFO",
+      afterSnapshot: expense,
+    });
     return NextResponse.json(expense, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: "Failed to create expense" }, { status: 500 });
   }

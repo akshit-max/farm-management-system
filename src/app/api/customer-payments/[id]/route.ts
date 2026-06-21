@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager, isAccountant } from "@/lib/rbac";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       where: { id, farm_id: farmId, deleted_at: null },
     });
     if (!payment) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    await checkFinancialLock(farmId, payment.payment_date);
 
     await db.$transaction(async (tx) => {
       await tx.customerPayment.update({
@@ -40,9 +43,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       }
     });
 
-    await logAudit(session.user.id, farmId, "DELETE", "CustomerPayment", id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "PAYMENTS",
+      action: "DELETE_PAYMENT",
+      entityType: "CustomerPayment",
+      entityId: id,
+      severity: "WARNING",
+      beforeSnapshot: payment
+    });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     return NextResponse.json({ error: "Failed to delete payment" }, { status: 500 });
   }
 }

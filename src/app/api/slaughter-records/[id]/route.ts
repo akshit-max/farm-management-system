@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager } from "@/lib/rbac";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +18,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    await checkFinancialLock(farmId, existing.slaughter_date);
+
     // Note: We don't restore batch quantity on slaughter delete. It's too complex and might result in negative values if animals were further processed or died.
     // Soft delete slaughter record only.
     await db.slaughterRecord.update({
@@ -24,9 +27,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       data: { deleted_at: new Date() },
     });
 
-    await logAudit(session.user.id, farmId, "DELETE", "SlaughterRecord", id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "SLAUGHTER",
+      action: "DELETE_SLAUGHTER",
+      entityType: "SlaughterRecord",
+      entityId: id,
+      severity: "WARNING",
+      beforeSnapshot: existing,
+    });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     return NextResponse.json({ error: "Failed to delete slaughter record" }, { status: 500 });
   }
 }

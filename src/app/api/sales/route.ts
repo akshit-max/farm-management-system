@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager, isAccountant } from "@/lib/rbac";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -71,6 +72,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsedData = createSalesSchema.parse(body);
+
+    // PHASE 12: Financial Lock Check
+    await checkFinancialLock(farmId, new Date(parsedData.invoice_date));
 
     // Verify Customer
     const customer = await db.customer.findFirst({
@@ -161,9 +165,22 @@ export async function POST(req: NextRequest) {
       return invoice;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    await logAudit(session.user.id, farmId, "CREATE", "SalesInvoice", result.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "SALES",
+      action: "CREATE_SALE",
+      entityType: "SalesInvoice",
+      entityId: result.id,
+      severity: "INFO",
+      afterSnapshot: result,
+    });
+    
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: error.message || "Failed to create invoice" }, { status: 500 });
   }

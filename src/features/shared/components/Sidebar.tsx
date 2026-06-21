@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog, Package, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, Grid, Settings, LineChart, FileText, ShoppingCart, Activity, Zap, Droplets, BookOpen, Tractor, Layers, Plus, UserCog, Package, TrendingUp, ShieldCheck } from 'lucide-react';
 
 export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollapsed?: boolean; userRole?: string }) {
   const pathname = usePathname();
@@ -73,6 +73,7 @@ export function Sidebar({ isCollapsed = false, userRole = "Worker" }: { isCollap
       items: [
         { name: 'User Management', icon: UserCog, href: '/dashboard/users', show: isOwner },
         { name: 'Settings', icon: Settings, href: '/dashboard/settings', show: true },
+        { name: 'Security', icon: ShieldCheck, href: '/dashboard/settings/security', show: isOwner || isManager || isAccountant },
       ]
     }
   ];

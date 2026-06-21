@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -44,6 +45,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createFeedConsumptionSchema.parse(body);
 
+    await checkFinancialLock(farmId, new Date(parsedData.date));
+
     // Verify batch belongs to farm
     const batch = await db.animalBatch.findFirst({
       where: { id: parsedData.batch_id, farm_id: farmId, deleted_at: null }
@@ -83,9 +86,21 @@ export async function POST(req: NextRequest) {
       return consumption;
     });
 
-    await logAudit(session.user.id, farmId, "CREATE", "FeedConsumption", result.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "FEED",
+      action: "CREATE_FEED_CONSUMPTION",
+      entityType: "FeedConsumption",
+      entityId: result.id,
+      severity: "INFO",
+      afterSnapshot: result,
+    });
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: error.message || "Failed to record consumption" }, { status: 500 });
   }

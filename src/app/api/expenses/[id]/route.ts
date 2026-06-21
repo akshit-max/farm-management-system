@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager, isAccountant } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -26,6 +27,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    await checkFinancialLock(farmId, existing.expense_date);
+
     const body = await req.json();
     const parsedData = updateExpenseSchema.parse(body);
 
@@ -34,9 +37,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: parsedData,
     });
 
-    await logAudit(session.user.id, farmId, "UPDATE", "Expense", id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "EXPENSES",
+      action: "UPDATE_EXPENSE",
+      entityType: "Expense",
+      entityId: id,
+      severity: "WARNING",
+      beforeSnapshot: existing,
+      afterSnapshot: expense,
+    });
     return NextResponse.json(expense);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: "Failed to update expense" }, { status: 500 });
   }
@@ -55,14 +71,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    await checkFinancialLock(farmId, existing.expense_date);
+
     await db.expense.update({
       where: { id },
       data: { deleted_at: new Date() },
     });
 
-    await logAudit(session.user.id, farmId, "DELETE", "Expense", id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "EXPENSES",
+      action: "DELETE_EXPENSE",
+      entityType: "Expense",
+      entityId: id,
+      severity: "WARNING",
+      beforeSnapshot: existing,
+    });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     return NextResponse.json({ error: "Failed to delete expense" }, { status: 500 });
   }
 }

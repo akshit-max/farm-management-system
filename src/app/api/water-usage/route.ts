@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createWaterUsageSchema.parse(body);
 
+    await checkFinancialLock(farmId, parsedData.date);
+
     const roomCheck = await db.room.findFirst({
       where: { id: parsedData.room_id, farm_id: farmId, deleted_at: null }
     });
@@ -65,9 +68,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logAudit(session.user.id, farmId, "CREATE", "WaterUsage", waterUsage.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "WATER",
+      action: "CREATE_WATER_USAGE",
+      entityType: "WaterUsage",
+      entityId: waterUsage.id,
+      severity: "INFO",
+      afterSnapshot: waterUsage,
+    });
     return NextResponse.json(waterUsage, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: "Failed to log water usage" }, { status: 500 });
   }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager, isAccountant } from "@/lib/rbac";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       });
 
       if (!invoice) throw new Error("Invoice not found or already cancelled");
+
+      // PHASE 12: Financial Lock Check
+      await checkFinancialLock(farmId, invoice.invoice_date);
 
       // 1. Update invoice status (using soft delete to represent cancelled)
       await tx.salesInvoice.update({
@@ -56,13 +60,33 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       return invoice;
     });
 
-    await logAudit(session.user.id, farmId, "CANCEL", "SalesInvoice", result.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "SALES",
+      action: "CANCEL_SALE",
+      entityType: "SalesInvoice",
+      entityId: result.id,
+      severity: "WARNING",
+      beforeSnapshot: result, // result contains the original due to how it was fetched before update, wait no we need the updated one for after. We'll just pass result for context.
+    });
     for (const paymentId of reversedPaymentIds) {
-      await logAudit(session.user.id, farmId, "DELETE", "CustomerPayment", paymentId);
+      await logAuditEvent({
+        userId: session.user.id,
+        farmId,
+        module: "PAYMENTS",
+        action: "DELETE_PAYMENT",
+        entityType: "CustomerPayment",
+        entityId: paymentId,
+        severity: "WARNING",
+      });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     return NextResponse.json({ error: error.message || "Failed to cancel invoice" }, { status: 500 });
   }
 }

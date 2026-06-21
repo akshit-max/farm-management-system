@@ -98,6 +98,10 @@ model Farm {
   expenses          Expense[]
   customerPayments  CustomerPayment[]
   notifications     Notification[]
+  auditLogs         AuditLog[]
+  financialPeriods  FinancialPeriod[]
+  backupSetting     BackupSetting?
+  backupHistory     BackupHistory[]
 
   @@map("farms")
 }
@@ -120,22 +124,101 @@ model Settings {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  farm_id   String?  @db.Uuid
-  user_id   String?  @db.Uuid
-  user      User?    @relation(fields: [user_id], references: [id])
-  action    String
-  entity    String
-  entity_id String   @db.Uuid
-  timestamp DateTime @default(now())
+  id              String   @id @default(uuid()) @db.Uuid
+  farm_id         String?  @db.Uuid
+  farm            Farm?    @relation(fields: [farm_id], references: [id])
+  user_id         String?  @db.Uuid
+  user            User?    @relation(fields: [user_id], references: [id])
+  role            String?
+  module          String   @default("SYSTEM")
+  action          String
+  entity_type     String   @default("UNKNOWN")
+  entity_id       String   // Removed @db.Uuid to allow non-uuid keys if needed, and to avoid constraint issues during migrations
+  severity        String   @default("INFO") // INFO, WARNING, CRITICAL
+  ip_address      String?
+  user_agent      String?
+  before_snapshot Json?
+  after_snapshot  Json?
+  changed_fields  Json?
+  reason          String?
+  timestamp       DateTime @default(now())
 
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
-  last_modified DateTime  @default(now()) @updatedAt
-  sync_status   String    @default("PENDING")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+  last_modified   DateTime  @default(now()) @updatedAt
+  sync_status     String    @default("PENDING")
 
+  @@index([farm_id, created_at])
+  @@index([entity_type, entity_id])
+  @@index([severity, created_at])
+  @@index([action, created_at])
+  @@index([module, created_at])
+  @@index([user_id, created_at])
   @@map("audit_logs")
+}
+
+model FinancialPeriod {
+  id              String   @id @default(uuid()) @db.Uuid
+  farm_id         String   @db.Uuid
+  farm            Farm     @relation(fields: [farm_id], references: [id])
+  
+  month           Int
+  year            Int
+  start_date      DateTime
+  end_date        DateTime
+  
+  status          String   // 'OPEN', 'LOCKED'
+  locked_by       String?  @db.Uuid
+  locked_at       DateTime?
+  unlocked_by     String?  @db.Uuid
+  unlocked_at     DateTime?
+  lock_reason     String?
+  unlock_reason   String?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  deleted_at      DateTime?
+  
+  @@unique([farm_id, year, month])
+  @@index([farm_id, status])
+  @@map("financial_periods")
+}
+
+model BackupSetting {
+  id                 String   @id @default(uuid()) @db.Uuid
+  farm_id            String   @unique @db.Uuid
+  farm               Farm     @relation(fields: [farm_id], references: [id])
+  enable_automatic   Boolean  @default(false)
+  frequency          String   // 'DAILY', 'WEEKLY', 'MONTHLY'
+  retention_days     Int      @default(30)
+  destination        String   // 'LOCAL', 'CLOUD'
+  
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  deleted_at         DateTime?
+  
+  @@map("backup_settings")
+}
+
+model BackupHistory {
+  id              String   @id @default(uuid()) @db.Uuid
+  farm_id         String   @db.Uuid
+  farm            Farm     @relation(fields: [farm_id], references: [id])
+  type            String   // 'FULL', 'DATABASE_ONLY', 'FILES_ONLY', 'SETTINGS_ONLY'
+  status          String   // 'PENDING', 'RUNNING', 'SUCCESS', 'FAILED'
+  checksum        String?
+  file_size       BigInt?
+  storage_path    String?
+  duration_ms     Int?
+  created_by      String?  @db.Uuid
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  deleted_at      DateTime?
+  
+  @@index([farm_id, created_at])
+  @@map("backup_history")
 }
 
 // --- Phase 1: Animal Operations ---

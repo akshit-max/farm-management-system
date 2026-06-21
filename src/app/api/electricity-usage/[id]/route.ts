@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -28,6 +29,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    await checkFinancialLock(farmId, existing.date);
+
     const body = await req.json();
     const parsedData = updateElectricityUsageSchema.parse(body);
 
@@ -48,9 +51,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: { ...parsedData, total_cost },
     });
 
-    await logAudit(session.user.id, farmId, "UPDATE", "ElectricityUsage", id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "ELECTRICITY",
+      action: "UPDATE_ELECTRICITY_USAGE",
+      entityType: "ElectricityUsage",
+      entityId: id,
+      severity: "WARNING",
+      beforeSnapshot: existing,
+      afterSnapshot: usage,
+    });
     return NextResponse.json(usage);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: "Failed to update electricity usage" }, { status: 500 });
   }
@@ -69,14 +85,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    await checkFinancialLock(farmId, existing.date);
+
     await db.electricityUsage.update({
       where: { id },
       data: { deleted_at: new Date() },
     });
 
-    await logAudit(session.user.id, farmId, "DELETE", "ElectricityUsage", id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "ELECTRICITY",
+      action: "DELETE_ELECTRICITY_USAGE",
+      entityType: "ElectricityUsage",
+      entityId: id,
+      severity: "WARNING",
+      beforeSnapshot: existing,
+    });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     return NextResponse.json({ error: "Failed to delete electricity usage" }, { status: 500 });
   }
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -42,6 +43,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createElectricityUsageSchema.parse(body);
 
+    await checkFinancialLock(farmId, parsedData.date);
+
     const meterCheck = await db.utilityMeter.findFirst({
       where: { id: parsedData.meter_id, farm_id: farmId, deleted_at: null }
     });
@@ -58,9 +61,21 @@ export async function POST(req: NextRequest) {
       data: { farm_id: farmId, ...parsedData, total_cost },
     });
 
-    await logAudit(session.user.id, farmId, "CREATE", "ElectricityUsage", usage.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "ELECTRICITY",
+      action: "CREATE_ELECTRICITY_USAGE",
+      entityType: "ElectricityUsage",
+      entityId: usage.id,
+      severity: "INFO",
+      afterSnapshot: usage,
+    });
     return NextResponse.json(usage, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: "Failed to log electricity usage" }, { status: 500 });
   }

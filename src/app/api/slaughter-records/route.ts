@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { logAudit } from "@/lib/audit";
+import { logAuditEvent } from "@/lib/auditLogger";
+import { checkFinancialLock } from "@/lib/financialLock";
 import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -65,6 +66,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsedData = createSlaughterSchema.parse(body);
+
+    await checkFinancialLock(farmId, parsedData.slaughter_date);
 
     if (parsedData.yield.usable_meat_weight > parsedData.yield.carcass_weight) {
       return NextResponse.json({ error: "Usable meat weight cannot exceed carcass weight" }, { status: 400 });
@@ -183,10 +186,22 @@ export async function POST(req: NextRequest) {
       return slaughter;
     });
 
-    await logAudit(session.user.id, farmId, "CREATE", "SlaughterRecord", result.id);
+    await logAuditEvent({
+      userId: session.user.id,
+      farmId,
+      module: "SLAUGHTER",
+      action: "CREATE_SLAUGHTER",
+      entityType: "SlaughterRecord",
+      entityId: result.id,
+      severity: "INFO",
+      afterSnapshot: result,
+    });
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("LOCKED")) {
+      return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    return NextResponse.json({ error: "Failed to process slaughter operation" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to create slaughter record" }, { status: 500 });
   }
 }
