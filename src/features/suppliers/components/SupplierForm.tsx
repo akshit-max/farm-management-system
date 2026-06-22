@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { supplierRepository } from "@/lib/offline/repositories/supplierRepository";
 
 const schema = z.object({
   company_name: z.string().min(1, "Company name is required"),
@@ -53,22 +54,17 @@ export function SupplierForm({ onSuccess, initialData, onCancel }: { onSuccess: 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/suppliers/${initialData.id}` : "/api/suppliers";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
-      
-      toast.success(initialData ? "Supplier updated!" : "Supplier created!");
+      if (initialData) {
+        await supplierRepository.update(initialData.id, data);
+        toast.success("Supplier updated!");
+      } else {
+        await supplierRepository.create(data);
+        toast.success("Supplier created!");
+      }
       reset();
       onSuccess();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }

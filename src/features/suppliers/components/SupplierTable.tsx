@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Trash2, Search, Edit, Phone, Mail } from "lucide-react";
+import { Trash2, Search, Edit, Phone, Mail, CloudOff } from "lucide-react";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 import { useRBAC } from "@/lib/rbac-client";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { supplierRepository } from "@/lib/offline/repositories/supplierRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -20,39 +21,31 @@ export function SupplierTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
   const [isDeleting, setIsDeleting] = useState(false);
   const { canMutate } = useRBAC();
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/suppliers`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data);
-      }
+      const allSuppliers = await supplierRepository.getAll();
+      setData(allSuppliers);
     } catch (err) {
       toast.error("Failed to load suppliers");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSuppliers();
-  }, [keyIndex]);
+  }, [fetchSuppliers, keyIndex]);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/suppliers/${deleteId}`, { method: "DELETE" });
-      const json = await res.json();
-      if (res.ok) {
-        toast.success("Supplier deleted successfully");
-        fetchSuppliers();
-      } else {
-        toast.error(json.error || "Failed to delete supplier");
-      }
-    } catch (err) {
-      toast.error("Network error");
+      await supplierRepository.delete(deleteId);
+      toast.success("Supplier deleted successfully");
+      fetchSuppliers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete supplier");
     }
     setIsDeleting(false);
     setDeleteId(null);
@@ -63,7 +56,14 @@ export function SupplierTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
       header: "Company",
       cell: (info) => (
         <div>
-          <div className="font-semibold text-gray-900">{info.getValue()}</div>
+          <div className="font-semibold text-gray-900 flex items-center gap-2">
+            {info.getValue()}
+            {info.row.original.isOffline && (
+              <span className="flex items-center text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium" title="Pending Sync">
+                <CloudOff className="w-3 h-3 mr-1" /> Pending
+              </span>
+            )}
+          </div>
           <div className="text-xs text-gray-500">{info.row.original.supplier_type}</div>
         </div>
       )
