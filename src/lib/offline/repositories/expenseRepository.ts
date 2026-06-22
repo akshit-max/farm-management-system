@@ -97,8 +97,26 @@ export const expenseRepository = {
       throw err;
     }
   },
-  
   update: async (id: string, data: any) => {
+    let isLocal = false;
+    if (db) {
+      const localRecord = await db.offline_expenses.get(id);
+      if (localRecord) isLocal = true;
+    }
+
+    if (isLocal) {
+      // Update local record and queue
+      const payload = { ...data, id };
+      await db!.offline_expenses.update(id, { payload, updated_at: new Date(), sync_status: 'PENDING' });
+      
+      // We also need to find the queue task and update it
+      const queueTask = await db!.sync_queue.filter((t: any) => t.entity === 'EXPENSE' && t.action === 'CREATE' && t.payload.id === id).first();
+      if (queueTask) {
+        await db!.sync_queue.update(queueTask.id, { payload, status: 'PENDING' });
+      }
+      return { success: true, offline: true };
+    }
+
     if (!navigator.onLine) {
       throw new Error("Editing existing online expenses offline is not supported in this version.");
     }
@@ -114,6 +132,34 @@ export const expenseRepository = {
       throw new Error(err.error || "Failed to update expense");
     }
     
+    return { success: true, offline: false };
+  },
+
+  delete: async (id: string) => {
+    let isLocal = false;
+    if (db) {
+      const localRecord = await db.offline_expenses.get(id);
+      if (localRecord) isLocal = true;
+    }
+
+    if (isLocal) {
+      await db!.offline_expenses.delete(id);
+      const queueTask = await db!.sync_queue.filter((t: any) => t.entity === 'EXPENSE' && t.action === 'CREATE' && t.payload.id === id).first();
+      if (queueTask) {
+        await db!.sync_queue.delete(queueTask.id);
+      }
+      return { success: true, offline: true };
+    }
+
+    if (!navigator.onLine) {
+      throw new Error("Deleting existing online expenses offline is not supported.");
+    }
+
+    const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to delete expense");
+    }
     return { success: true, offline: false };
   }
 };

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { expenseRepository } from "@/lib/offline/repositories/expenseRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -19,8 +20,7 @@ export function ExpenseTable({ data, onEdit, onRefresh, canMutate }: { data: any
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/expenses/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await expenseRepository.delete(deleteId);
       toast.success("Expense deleted successfully");
       onRefresh();
     } catch (err: any) {

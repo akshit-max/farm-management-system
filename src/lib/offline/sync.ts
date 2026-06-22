@@ -11,7 +11,7 @@ export const processSyncQueue = async () => {
     for (const task of pendingTasks) {
       try {
         if (task.entity === 'EXPENSE' && task.action === 'CREATE') {
-          const response = await fetch('/api/accounting/expenses', {
+          const response = await fetch('/api/expenses', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -21,14 +21,14 @@ export const processSyncQueue = async () => {
 
           if (response.ok) {
             await db.sync_queue.update(task.id, { status: 'SYNCED' });
-            if (task.payload.local_id) {
-              await db.offline_expenses.update(task.payload.local_id, { sync_status: 'SYNCED' });
+            if (task.payload.id) {
+              await db.offline_expenses.update(task.payload.id, { sync_status: 'SYNCED' });
             }
           } else {
             // Logically failed or validation error
             await db.sync_queue.update(task.id, { status: 'FAILED' });
-            if (task.payload.local_id) {
-              await db.offline_expenses.update(task.payload.local_id, { sync_status: 'FAILED' });
+            if (task.payload.id) {
+              await db.offline_expenses.update(task.payload.id, { sync_status: 'FAILED' });
             }
           }
         }
