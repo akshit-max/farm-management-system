@@ -611,11 +611,12 @@ model UtilityMeter {
 
   electricity_usages ElectricityUsage[]
 
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
-  last_modified DateTime  @default(now()) @updatedAt
-  sync_status   String    @default("PENDING")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime  @default(now()) @updatedAt
+  sync_status       String    @default("PENDING")
+  client_request_id String?   @unique
 
   @@unique([farm_id, meter_number])
   @@index([farm_id])

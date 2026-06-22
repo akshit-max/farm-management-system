@@ -2,12 +2,13 @@
 
 import { createColumnHelper, flexRender, getCoreRowModel, getPaginationRowModel, useReactTable, getFilteredRowModel } from "@tanstack/react-table";
 import { useState, useMemo } from "react";
-import { Pencil, Trash2, Search, Zap } from "lucide-react";
+import { Pencil, Trash2, Search, Zap, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
+import { utilityMeterRepository } from "@/lib/offline/repositories/utilityMeterRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -18,15 +19,11 @@ export function UtilityMeterTable({ data, onEdit, onRefresh, canMutate }: { data
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/utility-meters/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || "Failed to delete");
-      }
+      await utilityMeterRepository.delete(deleteId);
       toast.success("Meter deleted successfully");
       onRefresh();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to delete");
     } finally {
       setDeleteId(null);
     }
@@ -36,7 +33,16 @@ export function UtilityMeterTable({ data, onEdit, onRefresh, canMutate }: { data
     const baseColumns: any[] = [
       columnHelper.accessor("meter_name", {
         header: "Meter Name",
-        cell: (info) => <span className="font-bold text-gray-900">{info.getValue()}</span>
+        cell: (info) => (
+          <span className="font-bold text-gray-900 flex items-center gap-2">
+            {info.getValue()}
+            {info.row.original.isOffline && (
+              <span className="flex items-center text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium" title="Pending Sync">
+                <CloudOff className="w-3 h-3 mr-1" /> Pending
+              </span>
+            )}
+          </span>
+        )
       }),
       columnHelper.accessor("meter_number", {
         header: "Meter Number",

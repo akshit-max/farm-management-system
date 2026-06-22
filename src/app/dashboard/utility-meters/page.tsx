@@ -8,6 +8,9 @@ import { UtilityMeterForm } from "@/features/electricity/components/UtilityMeter
 import { toast } from "sonner";
 import { useRBAC } from "@/lib/rbac-client";
 
+import { utilityMeterRepository } from "@/lib/offline/repositories/utilityMeterRepository";
+import { roomRepository } from "@/lib/offline/repositories/roomRepository";
+
 export default function UtilityMetersPage() {
   const { canMutate } = useRBAC();
   const [meters, setMeters] = useState([]);
@@ -18,10 +21,18 @@ export default function UtilityMetersPage() {
   const fetchMeters = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/utility-meters");
-      if (!res.ok) throw new Error("Failed to fetch meters");
-      const data = await res.json();
-      setMeters(data.data || []);
+      const allMeters = await utilityMeterRepository.getAll();
+      const allRooms = await roomRepository.getAll();
+
+      const enrichedMeters = allMeters.map((meter: any) => {
+        if (!meter.room && meter.room_id) {
+          const room = allRooms.find((r: any) => r.id === meter.room_id);
+          return { ...meter, room: room ? { name: room.name } : null };
+        }
+        return meter;
+      });
+
+      setMeters(enrichedMeters as any);
     } catch (error) {
       toast.error("Failed to load utility meters");
     } finally {

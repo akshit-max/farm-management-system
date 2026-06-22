@@ -19,6 +19,8 @@ const schema = z.object({
 });
 
 import { electricityUsageRepository } from "@/lib/offline/repositories/electricityUsageRepository";
+import { roomRepository } from "@/lib/offline/repositories/roomRepository";
+import { utilityMeterRepository } from "@/lib/offline/repositories/utilityMeterRepository";
 
 export function ElectricityUsageForm({ onSuccess, initialData, onCancel }: { onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -37,11 +39,11 @@ export function ElectricityUsageForm({ onSuccess, initialData, onCancel }: { onS
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/rooms').then(res => res.json()),
-      fetch('/api/utility-meters').then(res => res.json())
+      roomRepository.getAll(),
+      utilityMeterRepository.getAll()
     ]).then(([roomsData, metersData]) => {
-      setRooms(roomsData.data || []);
-      setMeters(metersData.data || []);
+      setRooms(roomsData || []);
+      setMeters(metersData || []);
     });
   }, []);
 

@@ -82,6 +82,38 @@ export const processSyncQueue = async () => {
           }
         }
 
+        if (task.entity === 'UTILITY_METER') {
+          let response;
+          let method = 'POST';
+          let endpoint = '/api/utility-meters';
+          
+          if (task.action === 'UPDATE') {
+            method = 'PUT';
+            endpoint = `/api/utility-meters/${task.payload.id}`;
+          } else if (task.action === 'DELETE') {
+            method = 'DELETE';
+            endpoint = `/api/utility-meters/${task.payload.id}`;
+          }
+
+          response = await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: task.action !== 'DELETE' ? JSON.stringify(task.payload) : undefined,
+          });
+
+          if (response.ok) {
+            await db.sync_queue.update(task.id, { status: 'SYNCED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_utility_meters.update(task.payload.id, { sync_status: 'SYNCED' });
+            }
+          } else {
+            await db.sync_queue.update(task.id, { status: 'FAILED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_utility_meters.update(task.payload.id, { sync_status: 'FAILED' });
+            }
+          }
+        }
+
         if (task.entity === 'STAGE_DEFINITION') {
           let response;
           let method = 'POST';

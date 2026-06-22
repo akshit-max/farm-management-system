@@ -7,6 +7,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { roomRepository } from "@/lib/offline/repositories/roomRepository";
+import { utilityMeterRepository } from "@/lib/offline/repositories/utilityMeterRepository";
 
 const schema = z.object({
   meter_name: z.string().min(1, "Meter name is required"),
@@ -27,7 +29,7 @@ export function UtilityMeterForm({ onSuccess, initialData, onCancel }: { onSucce
   });
 
   useEffect(() => {
-    fetch('/api/rooms').then(res => res.json()).then(data => setRooms(data.data || []));
+    roomRepository.getAll().then(data => setRooms(data || []));
   }, []);
 
   useEffect(() => {
@@ -46,22 +48,17 @@ export function UtilityMeterForm({ onSuccess, initialData, onCancel }: { onSucce
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/utility-meters/${initialData.id}` : "/api/utility-meters";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
-      
-      toast.success(initialData ? "Meter updated!" : "Meter created!");
+      if (initialData) {
+        await utilityMeterRepository.update(initialData.id, data);
+        toast.success("Meter updated!");
+      } else {
+        await utilityMeterRepository.create(data);
+        toast.success("Meter created!");
+      }
       reset();
       onSuccess();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }

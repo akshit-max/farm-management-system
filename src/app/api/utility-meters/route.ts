@@ -6,10 +6,12 @@ import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const createUtilityMeterSchema = z.object({
+  id: z.string().uuid().optional(),
   meter_name: z.string().min(1, "Meter name is required"),
   meter_number: z.string().min(1, "Meter number is required"),
   room_id: z.string().min(1, "Linked Room is required"),
   status: z.string().default("ACTIVE"),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -39,6 +41,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createUtilityMeterSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.utilityMeter.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingReq) {
+        return NextResponse.json(existingReq, { status: 200 });
+      }
+    }
+
     const existing = await db.utilityMeter.findFirst({
       where: { farm_id: farmId, meter_number: parsedData.meter_number },
     });
@@ -53,6 +64,7 @@ export async function POST(req: NextRequest) {
           data: {
             ...parsedData,
             deleted_at: null,
+            sync_status: 'SYNCED'
           }
         });
         await logAudit(session.user.id, farmId, "RESTORE", "UtilityMeter", restored.id);
@@ -61,7 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     const meter = await db.utilityMeter.create({
-      data: { farm_id: farmId, ...parsedData },
+      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "UtilityMeter", meter.id);
