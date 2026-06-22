@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Trash2, Plus, Copy, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
-
+import { salesRepository } from "@/lib/offline/repositories/salesRepository";
 const itemSchema = z.object({
   batch_id: z.string().min(1, "Batch is required"),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
@@ -83,6 +83,40 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
 
   const watchItems = watch("items" as never) || [];
   const watchPaymentReceived = watch("payment_received");
+  const watchCustomerId = watch("customer_id");
+  const watchAmountPaid = watch("amount_paid");
+
+  const [offlineCustomerWarning, setOfflineCustomerWarning] = useState<any>(null);
+
+  useEffect(() => {
+    if (!navigator.onLine && watchCustomerId) {
+      salesRepository.getPendingCustomerReceivables(watchCustomerId).then(pending => {
+        const customer = customers.find((c: any) => c.id === watchCustomerId);
+        if (customer && customer.credit_limit > 0) {
+          const total = watchItems.reduce((sum: number, item: any) => sum + ((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)), 0);
+          const paid = watchPaymentReceived ? (Number(watchAmountPaid) || 0) : 0;
+          const newReceivable = Math.max(0, total - paid);
+          
+          // Assuming customer object has a cached outstanding_balance, if not we just use pending
+          const baseOutstanding = customer.outstanding_balance || 0; 
+          const estimated = baseOutstanding + pending + newReceivable;
+
+          if (estimated > customer.credit_limit) {
+            setOfflineCustomerWarning({
+              limit: customer.credit_limit,
+              estimated: estimated
+            });
+          } else {
+            setOfflineCustomerWarning(null);
+          }
+        } else {
+          setOfflineCustomerWarning(null);
+        }
+      });
+    } else {
+      setOfflineCustomerWarning(null);
+    }
+  }, [watchCustomerId, watchItems, watchPaymentReceived, watchAmountPaid, customers]);
 
   useEffect(() => {
     fetch(`/api/customers`).then(res => res.json()).then(data => setCustomers(data.data || []));
@@ -128,16 +162,18 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = isActuallyEditing ? `/api/sales/${initialData.id}` : "/api/sales";
-      const method = isActuallyEditing ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) {
+      if (isActuallyEditing) {
+        await salesRepository.update(initialData.id, data);
+      } else {
+        await salesRepository.create(data);
+      }
+      
+      toast.success(isActuallyEditing ? "Invoice updated!" : "Invoice created successfully!");
+      reset();
+      onSuccess();
+    } catch (err: any) {
+      const json = err;
+      if (json.code) {
         if (json.code === "CREDIT_LIMIT_EXCEEDED") {
           toast.error(
             <div className="flex flex-col gap-2 w-full">
@@ -178,14 +214,8 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
           toast.error("Customer account is inactive and cannot be used for new sales.");
           return;
         }
-        throw new Error(json.error || "Failed to save");
       }
-      
-      toast.success(isActuallyEditing ? "Invoice updated!" : "Invoice created successfully!");
-      reset();
-      onSuccess();
-    } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.error || err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }
@@ -205,17 +235,29 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
     return watchItems.reduce((sum: number, item: any) => sum + ((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)), 0);
   };
 
+  const [pendingReservations, setPendingReservations] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    salesRepository.getPendingReservations().then(res => setPendingReservations(res));
+  }, []);
+
   const getAvailableQty = (batchId: string) => {
     const b = batches.find(x => x.id === batchId);
     if (!b) return 0;
     let available = b.quantity;
+    
+    // Deduct offline reservations
+    if (pendingReservations[batchId]) {
+      available -= pendingReservations[batchId];
+    }
+
     if (isActuallyEditing && invoiceData?.items) {
       const oldItem = invoiceData.items.find((i: any) => i.batch_id === batchId);
       if (oldItem) {
         available += oldItem.quantity;
       }
     }
-    return available;
+    return Math.max(0, available);
   };
 
   if (isFetchingData) {
@@ -258,7 +300,20 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
         <div className="p-4 rounded-lg bg-red-50 border border-red-200 flex gap-3 text-red-800">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-sm">This invoice is cancelled. Read-only.</p>
+            <p className="font-semibold text-sm">This invoice is read-only.</p>
+          </div>
+        </div>
+      )}
+
+      {offlineCustomerWarning && (
+        <div className="p-4 rounded-lg bg-status-danger/10 border border-status-danger flex gap-3 text-status-danger">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-[14px]">Pending Server Validation</p>
+            <p className="text-[13px] mt-1 text-text-secondary">
+              Estimated outstanding balance (₹{offlineCustomerWarning.estimated.toLocaleString()}) exceeds the customer's credit limit (₹{offlineCustomerWarning.limit.toLocaleString()}).
+              This invoice will be queued offline but may be rejected by the server upon sync.
+            </p>
           </div>
         </div>
       )}

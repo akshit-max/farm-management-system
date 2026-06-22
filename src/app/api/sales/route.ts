@@ -23,6 +23,7 @@ const createSalesSchema = z.object({
   amount_paid: z.coerce.number().min(0).optional(),
   payment_method: z.string().optional(),
   reference_number: z.string().optional(),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -72,6 +73,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsedData = createSalesSchema.parse(body);
+
+    if (parsedData.client_request_id) {
+      const existingRequest = await db.salesInvoice.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingRequest) {
+        return NextResponse.json({ data: existingRequest }, { status: 200 });
+      }
+    }
 
     // PHASE 12: Financial Lock Check
     await checkFinancialLock(farmId, new Date(parsedData.invoice_date));
@@ -155,6 +165,7 @@ export async function POST(req: NextRequest) {
           total: totalAmount,
           payment_status: paymentStatus,
           notes: parsedData.notes,
+          client_request_id: parsedData.client_request_id,
           items: {
             create: parsedData.items.map(item => ({
               batch_id: item.batch_id,

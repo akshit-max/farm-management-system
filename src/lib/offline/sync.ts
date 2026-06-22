@@ -13,9 +13,7 @@ export const processSyncQueue = async () => {
         if (task.entity === 'EXPENSE' && task.action === 'CREATE') {
           const response = await fetch('/api/expenses', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(task.payload),
           });
 
@@ -25,10 +23,29 @@ export const processSyncQueue = async () => {
               await db.offline_expenses.update(task.payload.id, { sync_status: 'SYNCED' });
             }
           } else {
-            // Logically failed or validation error
             await db.sync_queue.update(task.id, { status: 'FAILED' });
             if (task.payload.id) {
               await db.offline_expenses.update(task.payload.id, { sync_status: 'FAILED' });
+            }
+          }
+        }
+        
+        if (task.entity === 'SALES' && task.action === 'CREATE') {
+          const response = await fetch('/api/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(task.payload),
+          });
+
+          if (response.ok) {
+            await db.sync_queue.update(task.id, { status: 'SYNCED' });
+            if (task.payload.id) {
+              await db.offline_sales.update(task.payload.id, { sync_status: 'SYNCED' });
+            }
+          } else {
+            await db.sync_queue.update(task.id, { status: 'FAILED' });
+            if (task.payload.id) {
+              await db.offline_sales.update(task.payload.id, { sync_status: 'FAILED' });
             }
           }
         }

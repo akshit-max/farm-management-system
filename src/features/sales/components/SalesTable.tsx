@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { format } from "date-fns";
+import { salesRepository } from "@/lib/offline/repositories/salesRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -25,11 +26,8 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
   const fetchSales = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/sales?showCancelled=${showCancelled}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data || []);
-      }
+      const allSales = await salesRepository.getAll(showCancelled);
+      setData(allSales);
     } catch (err) {
       toast.error("Failed to load sales invoices");
     } finally {
@@ -45,16 +43,11 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
     if (!cancelInvoice) return;
     setIsCancelling(true);
     try {
-      const res = await fetch(`/api/sales/${cancelInvoice.id}/cancel`, { method: "POST" });
-      if (res.ok) {
-        toast.success("Invoice cancelled. Inventory restored.");
-        fetchSales();
-      } else {
-        const json = await res.json();
-        toast.error(json.error || "Failed to cancel invoice");
-      }
-    } catch (err) {
-      toast.error("Network error");
+      await salesRepository.delete(cancelInvoice.id);
+      toast.success("Invoice cancelled. Inventory restored.");
+      fetchSales();
+    } catch (err: any) {
+      toast.error(err.error || err.message || "Failed to cancel invoice");
     }
     setIsCancelling(false);
     setCancelInvoice(null);
