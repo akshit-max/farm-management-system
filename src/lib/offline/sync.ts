@@ -50,6 +50,38 @@ export const processSyncQueue = async () => {
           }
         }
 
+        if (task.entity === 'STAGE_DEFINITION') {
+          let response;
+          let method = 'POST';
+          let endpoint = '/api/stages';
+          
+          if (task.action === 'UPDATE') {
+            method = 'PUT';
+            endpoint = `/api/stages/${task.payload.id}`;
+          } else if (task.action === 'DELETE') {
+            method = 'DELETE';
+            endpoint = `/api/stages/${task.payload.id}`;
+          }
+
+          response = await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: task.action !== 'DELETE' ? JSON.stringify(task.payload) : undefined,
+          });
+
+          if (response.ok) {
+            await db.sync_queue.update(task.id, { status: 'SYNCED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_stage_definitions.update(task.payload.id, { sync_status: 'SYNCED' });
+            }
+          } else {
+            await db.sync_queue.update(task.id, { status: 'FAILED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_stage_definitions.update(task.payload.id, { sync_status: 'FAILED' });
+            }
+          }
+        }
+
         if (task.entity === 'ANIMAL_CATEGORY') {
           let response;
           let method = 'POST';

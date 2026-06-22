@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { stageRepository } from "@/lib/offline/repositories/stageRepository";
+import { animalCategoryRepository } from "@/lib/offline/repositories/animalCategoryRepository";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -22,9 +24,23 @@ export function RoomForm({ onSuccess, initialData, onCancel }: { onSuccess: () =
   });
 
   useEffect(() => {
-    fetch(`/api/stages`)
-      .then(res => res.json())
-      .then(data => setStages(data.data || []));
+    async function loadStages() {
+      try {
+        const allStages = await stageRepository.getAll();
+        const allCategories = await animalCategoryRepository.getAll();
+        const enrichedStages = allStages.map((stage: any) => {
+          if (!stage.animal_category && stage.animal_category_id) {
+            const category = allCategories.find((c: any) => c.id === stage.animal_category_id);
+            return { ...stage, animal_category: category ? { name: category.name } : null };
+          }
+          return stage;
+        });
+        setStages(enrichedStages);
+      } catch (err) {
+        console.error("Failed to load stages", err);
+      }
+    }
+    loadStages();
   }, []);
 
   useEffect(() => {

@@ -14,6 +14,7 @@ const createStageSchema = z.object({
   water_requirement: z.number().optional(),
   electricity_requirement: z.number().optional(),
   display_order: z.number().min(0),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -52,6 +53,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createStageSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.stageDefinition.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingReq) {
+        return NextResponse.json(existingReq, { status: 200 });
+      }
+    }
+
     const existingOrder = await db.stageDefinition.findFirst({
       where: {
         animal_category_id: parsedData.animal_category_id,
@@ -63,7 +73,7 @@ export async function POST(req: NextRequest) {
     if (existingOrder) return NextResponse.json({ error: "Display order must be unique per category" }, { status: 400 });
 
     const stage = await db.stageDefinition.create({
-      data: { farm_id: farmId, ...parsedData },
+      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "StageDefinition", stage.id);

@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { stageRepository } from "@/lib/offline/repositories/stageRepository";
+import { animalCategoryRepository } from "@/lib/offline/repositories/animalCategoryRepository";
 
 const schema = z.object({
   animal_category_id: z.string().uuid("Category is required"),
@@ -31,9 +33,7 @@ export function StageForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   });
 
   useEffect(() => {
-    fetch(`/api/animal-categories`)
-      .then(res => res.json())
-      .then(data => setCategories(data.data || []));
+    animalCategoryRepository.getAll().then(data => setCategories(data || []));
   }, []);
 
   useEffect(() => {
@@ -59,23 +59,17 @@ export function StageForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/stages/${initialData.id}` : "/api/stages";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to save");
+      if (initialData) {
+        await stageRepository.update(initialData.id, data);
+        toast.success("Stage updated!");
+      } else {
+        await stageRepository.create(data);
+        toast.success("Stage saved!");
       }
-      toast.success(initialData ? "Stage updated!" : "Stage saved!");
       reset();
       onSuccess();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }
