@@ -77,7 +77,12 @@ export default function BatchDetailsPage() {
   const onMortalitySubmit = async (data: any) => {
     try {
       const formattedDate = new Date(data.date).toISOString();
-      await mortalityRepository.create({ ...data, date: formattedDate, batch_id: id });
+      await mortalityRepository.create({ 
+        ...data, 
+        date: formattedDate, 
+        batch_id: id,
+        batch: batch ? { batch_number: batch.batch_number } : undefined 
+      });
       toast.success("Mortality recorded successfully");
       mForm.reset();
       fetchBatch();

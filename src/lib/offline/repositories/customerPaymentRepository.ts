@@ -44,7 +44,7 @@ export const customerPaymentRepository = {
     if (typeof window === 'undefined') throw new Error("Cannot create offline from server");
     
     const localId = uuidv4();
-    const payload = { ...data, id: localId, client_request_id: localId };
+    const payload = { ...data, amount: Number(data.amount), id: localId, client_request_id: localId };
 
     const saveOffline = async () => {
       if (db) {

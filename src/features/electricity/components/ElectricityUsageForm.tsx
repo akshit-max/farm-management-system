@@ -77,10 +77,20 @@ export function ElectricityUsageForm({ onSuccess, initialData, onCancel }: { onS
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
+      const meter = meters.find(m => m.id === data.meter_id);
+      const room = rooms.find(r => r.id === data.room_id);
+      
+      const enrichedData = {
+        ...data,
+        total_cost: Number(data.units_consumed) * Number(data.cost_per_unit),
+        meter: meter ? { meter_name: meter.meter_name } : null,
+        room: room ? { name: room.name } : null
+      };
+
       if (initialData) {
-        await electricityUsageRepository.update(initialData.id, data);
+        await electricityUsageRepository.update(initialData.id, enrichedData);
       } else {
-        await electricityUsageRepository.create(data);
+        await electricityUsageRepository.create(enrichedData);
       }
       
       toast.success(initialData ? "Electricity usage updated!" : "Electricity usage recorded!");

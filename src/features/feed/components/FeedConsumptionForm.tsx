@@ -92,8 +92,15 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
       if (data.quantity_kg > currentStock) {
          throw new Error(`Insufficient stock. Projected available: ${currentStock} kg`);
       }
+      const batch = batches.find(b => b.id === data.batch_id);
+      
+      const enrichedData = {
+        ...data,
+        feedType: feed ? { name: feed.name } : null,
+        batch: batch ? { batch_number: batch.batch_number } : null
+      };
 
-      await feedConsumptionRepository.create(data);
+      await feedConsumptionRepository.create(enrichedData);
       
       toast.success("Feed consumption recorded!");
       reset({ batch_id: "", feed_type_id: "", date: new Date().toISOString().split('T')[0], quantity_kg: 0, cost: 0, notes: "" });

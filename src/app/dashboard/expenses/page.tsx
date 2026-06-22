@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { useRBAC } from "@/lib/rbac-client";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/offline/db";
-import { processSyncQueue } from "@/lib/offline/sync";
 import { expenseRepository } from "@/lib/offline/repositories/expenseRepository";
 
 export default function ExpensesPage() {
@@ -49,16 +48,11 @@ export default function ExpensesPage() {
   };
 
   useEffect(() => {
-    const handleOnline = async () => {
-      setIsOffline(false);
-      setIsSyncing(true);
-      try {
-        await processSyncQueue();
-        await fetchExpenses();
-      } finally {
-        setIsSyncing(false);
-      }
-    };
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
     setIsOffline(!navigator.onLine);

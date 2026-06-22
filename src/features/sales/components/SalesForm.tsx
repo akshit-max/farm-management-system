@@ -162,10 +162,19 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
+      const customer = customers.find(c => c.id === data.customer_id);
+      const total = data.items.reduce((sum: number, item: any) => sum + ((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)), 0);
+      
+      const enrichedData = {
+        ...data,
+        total: total,
+        customer: customer ? { company_name: customer.company_name } : null
+      };
+
       if (isActuallyEditing) {
-        await salesRepository.update(initialData.id, data);
+        await salesRepository.update(initialData.id, enrichedData);
       } else {
-        await salesRepository.create(data);
+        await salesRepository.create(enrichedData);
       }
       
       toast.success(isActuallyEditing ? "Invoice updated!" : "Invoice created successfully!");

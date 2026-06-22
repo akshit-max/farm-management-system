@@ -1,10 +1,26 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
 
+import { processSyncQueue } from "@/lib/offline/sync";
+
 export function DashboardShell({ children, userRole }: { children: React.ReactNode; userRole?: string }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log("Network restored. Processing sync queue globally...");
+      processSyncQueue();
+    };
+    
+    window.addEventListener("online", handleOnline);
+    if (navigator.onLine) {
+      processSyncQueue();
+    }
+    
+    return () => window.removeEventListener("online", handleOnline);
+  }, []);
   
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans">

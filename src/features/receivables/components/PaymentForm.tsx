@@ -40,7 +40,8 @@ export function PaymentForm({ customerId, invoices, onSuccess, onCancel }: { cus
     if (selectedInvoice) {
       // Calculate outstanding
       const paid = selectedInvoice.payments ? selectedInvoice.payments.reduce((acc: number, p: any) => acc + p.amount, 0) : 0;
-      const outstanding = selectedInvoice.total - paid;
+      const invTotal = selectedInvoice.total !== undefined ? selectedInvoice.total : (selectedInvoice.items ? selectedInvoice.items.reduce((s: number, i: any) => s + ((Number(i.quantity)||0)*(Number(i.unit_price)||0)), 0) : 0);
+      const outstanding = invTotal - paid;
       if (outstanding > 0) {
         setValue("amount", outstanding);
       }
@@ -78,10 +79,11 @@ export function PaymentForm({ customerId, invoices, onSuccess, onCancel }: { cus
               <option value="">-- Select Pending Invoice --</option>
               {pendingInvoices.map(inv => {
                 const paid = inv.payments ? inv.payments.reduce((acc: number, p: any) => acc + p.amount, 0) : 0;
-                const outstanding = inv.total - paid;
+                const invTotal = inv.total !== undefined ? inv.total : (inv.items ? inv.items.reduce((s: number, i: any) => s + ((Number(i.quantity)||0)*(Number(i.unit_price)||0)), 0) : 0);
+                const outstanding = invTotal - paid;
                 return (
                   <option key={inv.id} value={inv.id}>
-                    {inv.invoice_number} (Total: ₹{inv.total} | Outstanding: ₹{outstanding.toFixed(2)})
+                    {inv.invoice_number} (Total: ₹{invTotal} | Outstanding: ₹{outstanding.toFixed(2)})
                   </option>
                 );
               })}

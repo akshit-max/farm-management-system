@@ -69,10 +69,20 @@ export function WaterUsageForm({ onSuccess, initialData, onCancel }: { onSuccess
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
+      const room = rooms.find(r => r.id === data.room_id);
+      const batch = batches.find(b => b.id === data.batch_id);
+      
+      const enrichedData = {
+        ...data,
+        total_cost: Number(data.actual_consumption_liters) * Number(data.cost_per_liter),
+        room: room ? { name: room.name } : null,
+        batch: batch ? { batch_number: batch.batch_number } : null
+      };
+
       if (initialData) {
-        await waterUsageRepository.update(initialData.id, data);
+        await waterUsageRepository.update(initialData.id, enrichedData);
       } else {
-        await waterUsageRepository.create(data);
+        await waterUsageRepository.create(enrichedData);
       }
       
       toast.success(initialData ? "Water usage updated!" : "Water usage recorded!");
