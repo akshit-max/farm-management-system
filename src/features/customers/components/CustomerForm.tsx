@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { customerRepository } from "@/lib/offline/repositories/customerRepository";
 
 const schema = z.object({
   company_name: z.string().min(1, "Customer name is required"),
@@ -51,22 +52,17 @@ export function CustomerForm({ onSuccess, initialData, onCancel }: { onSuccess: 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/customers/${initialData.id}` : "/api/customers";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
-      
-      toast.success(initialData ? "Customer updated!" : "Customer created!");
+      if (initialData) {
+        await customerRepository.update(initialData.id, data);
+        toast.success("Customer updated!");
+      } else {
+        await customerRepository.create(data);
+        toast.success("Customer created!");
+      }
       reset();
       onSuccess();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }

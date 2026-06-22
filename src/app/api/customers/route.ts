@@ -14,6 +14,7 @@ const createCustomerSchema = z.object({
   customer_type: z.string().min(1, "Customer type is required"),
   notes: z.string().optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+  client_request_id: z.string().optional()
 });
 
 export async function GET(req: NextRequest) {
@@ -46,6 +47,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createCustomerSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.customer.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingReq) {
+        return NextResponse.json(existingReq, { status: 200 });
+      }
+    }
+
     const existing = await db.customer.findFirst({
       where: { farm_id: farmId, company_name: parsedData.company_name, deleted_at: null },
     });
@@ -72,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     const customer = await db.customer.create({
-      data: { farm_id: farmId, ...parsedData },
+      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "Customer", customer.id);

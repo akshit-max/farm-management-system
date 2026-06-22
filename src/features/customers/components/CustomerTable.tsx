@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Trash2, Search, Edit, Phone, Mail, BookOpen } from "lucide-react";
+import { Trash2, Search, Edit, Phone, Mail, BookOpen, CloudOff } from "lucide-react";
 import Link from "next/link";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 import { useRBAC } from "@/lib/rbac-client";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { customerRepository } from "@/lib/offline/repositories/customerRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -21,39 +22,31 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
   const [isDeleting, setIsDeleting] = useState(false);
   const { canManageCustomers } = useRBAC();
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/customers`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data);
-      }
+      const allCustomers = await customerRepository.getAll();
+      setData(allCustomers);
     } catch (err) {
       toast.error("Failed to load customers");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCustomers();
-  }, [keyIndex]);
+  }, [fetchCustomers, keyIndex]);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/customers/${deleteId}`, { method: "DELETE" });
-      const json = await res.json();
-      if (res.ok) {
-        toast.success("Customer deleted successfully");
-        fetchCustomers();
-      } else {
-        toast.error(json.error || "Failed to delete customer");
-      }
-    } catch (err) {
-      toast.error("Network error");
+      await customerRepository.delete(deleteId);
+      toast.success("Customer deleted successfully");
+      fetchCustomers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete customer");
     }
     setIsDeleting(false);
     setDeleteId(null);
@@ -64,7 +57,14 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
       header: "Customer Name",
       cell: (info) => (
         <div>
-          <div className="font-semibold text-gray-900">{info.getValue()}</div>
+          <div className="font-semibold text-gray-900 flex items-center gap-2">
+            {info.getValue()}
+            {info.row.original.isOffline && (
+              <span className="flex items-center text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium" title="Pending Sync">
+                <CloudOff className="w-3 h-3 mr-1" /> Pending
+              </span>
+            )}
+          </div>
           <div className="text-xs text-gray-500">{info.row.original.customer_type}</div>
         </div>
       )
