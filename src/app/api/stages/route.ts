@@ -6,6 +6,7 @@ import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const createStageSchema = z.object({
+  id: z.string().uuid().optional(),
   animal_category_id: z.string().uuid(),
   stage_name: z.string().min(1, "Stage name is required"),
   expected_duration_days: z.number().min(1, "Duration must be > 0"),

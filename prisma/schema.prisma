@@ -293,11 +293,12 @@ model Room {
   utilityMeters     UtilityMeter[]
   electricityUsages ElectricityUsage[]
 
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
-  last_modified DateTime  @default(now()) @updatedAt
-  sync_status   String    @default("PENDING")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime  @default(now()) @updatedAt
+  sync_status       String    @default("PENDING")
+  client_request_id String?   @unique
 
   @@index([farm_id])
   @@map("rooms")

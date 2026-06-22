@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { stageRepository } from "@/lib/offline/repositories/stageRepository";
 import { animalCategoryRepository } from "@/lib/offline/repositories/animalCategoryRepository";
+import { roomRepository } from "@/lib/offline/repositories/roomRepository";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -75,21 +76,19 @@ export function RoomForm({ onSuccess, initialData, onCancel }: { onSuccess: () =
     }
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/rooms/${initialData.id}` : "/api/rooms";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, allowed_stages: selectedStages.join(",") }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
-      toast.success(initialData ? "Room updated!" : "Room saved!");
+      const payload = { ...data, allowed_stages: selectedStages.join(",") };
+      if (initialData) {
+        await roomRepository.update(initialData.id, payload);
+        toast.success("Room updated!");
+      } else {
+        await roomRepository.create(payload);
+        toast.success("Room saved!");
+      }
       reset();
       setSelectedStages([]);
       onSuccess();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }

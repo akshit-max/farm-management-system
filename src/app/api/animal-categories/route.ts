@@ -6,6 +6,7 @@ import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const createCategorySchema = z.object({
+  id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   mortality_percentage: z.number().min(0).max(100),

@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, CloudOff } from "lucide-react";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 import { useRBAC } from "@/lib/rbac-client";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { roomRepository } from "@/lib/offline/repositories/roomRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -20,36 +21,50 @@ export function RoomTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?: (ro
   const [isDeleting, setIsDeleting] = useState(false);
   const { canMutate } = useRBAC();
 
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/rooms`);
-    if (res.ok) {
-      const json = await res.json();
-      setData(json.data);
+    try {
+      const allRooms = await roomRepository.getAll();
+      setData(allRooms);
+    } catch (err) {
+      toast.error("Failed to load rooms");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchRooms();
-  }, [keyIndex]);
+  }, [fetchRooms, keyIndex]);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const res = await fetch(`/api/rooms/${deleteId}`, { method: "DELETE" });
-    if (res.ok) {
+    try {
+      await roomRepository.delete(deleteId);
       toast.success("Deleted successfully");
       fetchRooms();
-    } else {
-      toast.error("Failed to delete");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
     }
     setIsDeleting(false);
     setDeleteId(null);
   };
 
   const columns = [
-    columnHelper.accessor("name", { header: "Room Name" }),
+    columnHelper.accessor("name", { 
+      header: "Room Name",
+      cell: (info) => (
+        <span className="font-semibold text-text-heading flex items-center gap-2">
+          {info.getValue()}
+          {info.row.original.isOffline && (
+            <span className="flex items-center text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium" title="Pending Sync">
+              <CloudOff className="w-3 h-3 mr-1" /> Pending
+            </span>
+          )}
+        </span>
+      )
+    }),
     columnHelper.accessor("capacity", { header: "Capacity" }),
     columnHelper.accessor("allowed_stages", { 
       header: "Allowed Stages",

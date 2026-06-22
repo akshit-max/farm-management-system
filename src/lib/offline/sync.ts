@@ -6,7 +6,7 @@ export const processSyncQueue = async () => {
   if (!db) return;
 
   try {
-    const pendingTasks = await db.sync_queue.where('status').equals('PENDING').toArray();
+    const pendingTasks = await db.sync_queue.where('status').equals('PENDING').sortBy('created_at');
 
     for (const task of pendingTasks) {
       try {
@@ -46,6 +46,38 @@ export const processSyncQueue = async () => {
             await db.sync_queue.update(task.id, { status: 'FAILED' });
             if (task.payload.id) {
               await db.offline_sales.update(task.payload.id, { sync_status: 'FAILED' });
+            }
+          }
+        }
+
+        if (task.entity === 'ROOM') {
+          let response;
+          let method = 'POST';
+          let endpoint = '/api/rooms';
+          
+          if (task.action === 'UPDATE') {
+            method = 'PUT';
+            endpoint = `/api/rooms/${task.payload.id}`;
+          } else if (task.action === 'DELETE') {
+            method = 'DELETE';
+            endpoint = `/api/rooms/${task.payload.id}`;
+          }
+
+          response = await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: task.action !== 'DELETE' ? JSON.stringify(task.payload) : undefined,
+          });
+
+          if (response.ok) {
+            await db.sync_queue.update(task.id, { status: 'SYNCED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_rooms.update(task.payload.id, { sync_status: 'SYNCED' });
+            }
+          } else {
+            await db.sync_queue.update(task.id, { status: 'FAILED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_rooms.update(task.payload.id, { sync_status: 'FAILED' });
             }
           }
         }

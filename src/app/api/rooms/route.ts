@@ -6,9 +6,11 @@ import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const createRoomSchema = z.object({
+  id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
   capacity: z.number().min(1, "Capacity must be > 0"),
   allowed_stages: z.string(),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -37,8 +39,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createRoomSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.room.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingReq) {
+        return NextResponse.json(existingReq, { status: 200 });
+      }
+    }
+
     const room = await db.room.create({
-      data: { farm_id: farmId, ...parsedData },
+      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "Room", room.id);
