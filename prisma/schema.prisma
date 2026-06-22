@@ -334,6 +334,7 @@ model AnimalBatch {
   deleted_at        DateTime?
   last_modified     DateTime           @default(now()) @updatedAt
   sync_status       String             @default("PENDING")
+  client_request_id String?            @unique
   feedConsumptions  FeedConsumption[]
   salesInvoiceItems SalesInvoiceItem[]
   waterUsages       WaterUsage[]
