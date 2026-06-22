@@ -165,9 +165,16 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
       const customer = customers.find(c => c.id === data.customer_id);
       const total = data.items.reduce((sum: number, item: any) => sum + ((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)), 0);
       
+      const amountPaid = data.payment_received ? Number(data.amount_paid) || 0 : 0;
+      const isPaid = amountPaid > 0 && Math.abs(total - amountPaid) < 0.01;
+      const isPartial = amountPaid > 0 && amountPaid < total - 0.01;
+      const paymentStatus = isPaid ? "PAID" : isPartial ? "PARTIAL" : "PENDING";
+
       const enrichedData = {
         ...data,
         total: total,
+        status: "ACTIVE",
+        payment_status: paymentStatus,
         customer: customer ? { company_name: customer.company_name } : null
       };
 

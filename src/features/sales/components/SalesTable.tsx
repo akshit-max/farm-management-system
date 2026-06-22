@@ -79,20 +79,23 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
     }),
     columnHelper.accessor("payment_status", {
       header: "Payment",
-      cell: (info) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-          info.getValue() === "PAID" ? "bg-emerald-100 text-emerald-800" :
-          info.getValue() === "PARTIAL" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
-        }`}>
-          {info.getValue()}
-        </span>
-      )
+      cell: (info) => {
+        const val = info.getValue() || "PENDING";
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+            val === "PAID" ? "bg-emerald-100 text-emerald-800" :
+            val === "PARTIAL" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+          }`}>
+            {val}
+          </span>
+        );
+      }
     }),
     ...(canManageSales ? [columnHelper.display({
       id: "actions",
       header: "Actions",
       cell: (info) => {
-        const isActive = info.row.original.status === "ACTIVE";
+        const isActive = info.row.original.status !== "CANCELLED";
         return (
           <div className="flex items-center gap-2">
             {isActive ? (
