@@ -6,6 +6,8 @@ import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const createBatchSchema = z.object({
+  id: z.string().uuid().optional(),
+  client_request_id: z.string().optional(),
   batch_number: z.string().min(1),
   animal_category_id: z.string().uuid(),
   room_id: z.string().uuid(),
@@ -57,6 +59,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createBatchSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.animalBatch.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingReq) {
+        return NextResponse.json(existingReq, { status: 200 });
+      }
+    }
+
     const room = await db.room.findUnique({
       where: { id: parsedData.room_id },
       include: { animal_batches: { where: { deleted_at: null, status: "ACTIVE" } } },
@@ -76,6 +87,8 @@ export async function POST(req: NextRequest) {
 
     const batch = await db.animalBatch.create({
       data: {
+        ...(parsedData.id ? { id: parsedData.id } : {}),
+        client_request_id: parsedData.client_request_id,
         farm_id: farmId,
         batch_number: parsedData.batch_number,
         animal_category_id: parsedData.animal_category_id,
@@ -89,6 +102,7 @@ export async function POST(req: NextRequest) {
         cost_per_animal: parsedData.cost_per_animal,
         notes: parsedData.notes,
         expected_sale_date: parsedData.expected_sale_date ? new Date(parsedData.expected_sale_date) : null,
+        sync_status: 'SYNCED'
       },
     });
 

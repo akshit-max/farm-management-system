@@ -6,6 +6,7 @@ import { isManager, isAccountant } from "@/lib/rbac";
 import { z } from "zod";
 
 const createCustomerSchema = z.object({
+  id: z.string().uuid().optional(),
   company_name: z.string().min(1, "Customer name is required"),
   contact_person: z.string().optional(),
   phone: z.string().min(1, "Phone is required"),

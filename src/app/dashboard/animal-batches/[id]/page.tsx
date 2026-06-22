@@ -49,9 +49,21 @@ export default function BatchDetailsPage() {
   const fetchBatch = async () => {
     if (!id) return;
     setLoading(true);
-    const res = await fetch(`/api/animal-batches/${id}`);
-    if (res.ok) {
-      setBatch(await res.json());
+    try {
+      const res = await fetch(`/api/animal-batches/${id}`);
+      if (res.ok) {
+        setBatch(await res.json());
+      } else {
+        throw new Error("Not found online");
+      }
+    } catch (e) {
+      // Fallback to repository
+      const { animalBatchRepository } = await import("@/lib/offline/repositories/animalBatchRepository");
+      const allBatches = await animalBatchRepository.getAll();
+      const offlineBatch = allBatches.find((b: any) => b.id === id);
+      if (offlineBatch) {
+        setBatch(offlineBatch);
+      }
     }
     setLoading(false);
   };

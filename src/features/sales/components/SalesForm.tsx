@@ -119,8 +119,12 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   }, [watchCustomerId, watchItems, watchPaymentReceived, watchAmountPaid, customers]);
 
   useEffect(() => {
-    fetch(`/api/customers`).then(res => res.json()).then(data => setCustomers(data.data || []));
-    fetch(`/api/animal-batches`).then(res => res.json()).then(data => setBatches(data.data || []));
+    import("@/lib/offline/repositories/customerRepository").then(({ customerRepository }) => {
+      customerRepository.getAll().then(data => setCustomers(data || []));
+    });
+    import("@/lib/offline/repositories/animalBatchRepository").then(({ animalBatchRepository }) => {
+      animalBatchRepository.getAll().then(data => setBatches(data || []));
+    });
   }, []);
 
   useEffect(() => {

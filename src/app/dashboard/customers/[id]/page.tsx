@@ -121,7 +121,6 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
       {isRecording && canManageCustomers && (
         <PaymentForm 
           customerId={customer.id} 
-          invoices={customer.sales_invoices} 
           onSuccess={() => { setIsRecording(false); fetchLedger(); }} 
           onCancel={() => setIsRecording(false)} 
         />

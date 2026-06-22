@@ -14,6 +14,7 @@ const itemSchema = z.object({
 });
 
 const createSalesSchema = z.object({
+  id: z.string().uuid().optional(),
   customer_id: z.string().min(1, "Customer is required"),
   invoice_date: z.string().min(1, "Date is required"),
   invoice_number: z.string().min(1, "Invoice number is required"),
@@ -158,6 +159,7 @@ export async function POST(req: NextRequest) {
       // 2. Create Invoice
       const invoice = await tx.salesInvoice.create({
         data: {
+          ...(parsedData.id ? { id: parsedData.id } : {}),
           farm_id: farmId,
           customer_id: parsedData.customer_id,
           invoice_number: parsedData.invoice_number,
@@ -165,6 +167,7 @@ export async function POST(req: NextRequest) {
           total: totalAmount,
           payment_status: paymentStatus,
           notes: parsedData.notes,
+          sync_status: 'SYNCED',
           client_request_id: parsedData.client_request_id,
           items: {
             create: parsedData.items.map(item => ({

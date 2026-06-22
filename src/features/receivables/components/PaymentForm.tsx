@@ -20,7 +20,17 @@ const schema = z.object({
 
 const METHODS = ["Cash", "Bank Transfer", "UPI", "Cheque", "Credit", "Other"];
 
-export function PaymentForm({ customerId, invoices, onSuccess, onCancel }: { customerId: string; invoices: any[]; onSuccess: () => void; onCancel: () => void }) {
+export function PaymentForm({ customerId, onSuccess, onCancel }: { customerId: string; onSuccess: () => void; onCancel: () => void }) {
+  const [invoices, setInvoices] = useState<any[]>([]);
+
+  useEffect(() => {
+    import("@/lib/offline/repositories/salesRepository").then(({ salesRepository }) => {
+      salesRepository.getAll().then(all => {
+        setInvoices(all.filter((inv: any) => inv.customer_id === customerId));
+      });
+    });
+  }, [customerId]);
+
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
