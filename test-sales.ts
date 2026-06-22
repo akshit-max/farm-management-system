@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function run() { const total = await prisma.salesInvoiceItem.count(); const withBatch = await prisma.salesInvoiceItem.count({where: {batch_id: {not: undefined}}}); console.log('Total:', total, 'WithBatch:', withBatch); } run();  

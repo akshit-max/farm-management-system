@@ -91,8 +91,8 @@ export default function ProfitAndLossPage() {
           </div>
           <div className="p-4 space-y-1">
             <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-gray-600">Feed Cost</span>
-              <span className="font-medium text-status-danger">₹{expenses.feed.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+              <span className="text-gray-600">Cost of Goods Sold (COGS)</span>
+              <span className="font-medium text-status-danger">₹{expenses.cogs?.toLocaleString(undefined, {minimumFractionDigits: 2}) || "0.00"}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-50">
               <span className="text-gray-600">Water Cost</span>

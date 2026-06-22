@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { expenseRepository } from "@/lib/offline/repositories/expenseRepository";
 
 const schema = z.object({
   expense_date: z.string().min(1, "Date is required"),
@@ -44,21 +45,17 @@ export function ExpenseForm({ initialData, onSuccess, onCancel }: { initialData?
 
   const onSubmit = async (data: any) => {
     try {
-      const url = initialData ? `/api/expenses/${initialData.id}` : `/api/expenses`;
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to save expense");
+      if (initialData) {
+        await expenseRepository.update(initialData.id, data);
+        toast.success("Expense updated successfully");
+      } else {
+        const result = await expenseRepository.create(data);
+        if (result?.offline) {
+          toast.success("Saved offline. Will sync when online.");
+        } else {
+          toast.success("Expense created successfully");
+        }
       }
-
-      toast.success(`Expense ${initialData ? "updated" : "created"} successfully`);
       onSuccess();
     } catch (error: any) {
       toast.error(error.message);
