@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ExpenseTable } from "@/features/accounting/components/ExpenseTable";
@@ -35,7 +35,7 @@ export default function ExpensesPage() {
     }
   }, []);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await expenseRepository.getAll();
@@ -45,7 +45,7 @@ export default function ExpensesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchExpenses();
