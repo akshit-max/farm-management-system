@@ -14,6 +14,7 @@ const createElectricityUsageSchema = z.object({
   cost_per_unit: z.coerce.number().min(0, "Cost must be >= 0"),
   equipment_type: z.string().min(1, "Equipment type is required"),
   notes: z.string().optional(),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -43,6 +44,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createElectricityUsageSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existing = await db.electricityUsage.findUnique({
+        where: { client_request_id: parsedData.client_request_id }
+      });
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 });
+      }
+    }
+
     await checkFinancialLock(farmId, parsedData.date);
 
     const meterCheck = await db.utilityMeter.findFirst({
@@ -58,7 +68,7 @@ export async function POST(req: NextRequest) {
     const total_cost = parsedData.units_consumed * parsedData.cost_per_unit;
 
     const usage = await db.electricityUsage.create({
-      data: { farm_id: farmId, ...parsedData, total_cost },
+      data: { farm_id: farmId, ...parsedData, total_cost, sync_status: 'SYNCED' },
     });
 
     await logAuditEvent({

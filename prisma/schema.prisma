@@ -633,11 +633,12 @@ model ElectricityUsage {
   equipment_type String
   notes          String?
 
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
-  last_modified DateTime  @default(now()) @updatedAt
-  sync_status   String    @default("PENDING")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime  @default(now()) @updatedAt
+  sync_status       String    @default("PENDING")
+  client_request_id String?   @unique
 
   @@index([farm_id])
   @@index([meter_id])
@@ -754,11 +755,12 @@ model Expense {
   notes          String?
   created_by     String  @db.Uuid
 
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
-  deleted_at     DateTime?
-  last_modified  DateTime  @default(now()) @updatedAt
-  sync_status    String    @default("PENDING")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime  @default(now()) @updatedAt
+  sync_status       String    @default("PENDING")
+  client_request_id String?   @unique
 
   @@index([farm_id])
   @@map("expenses")

@@ -29,6 +29,12 @@ export default function AnalyticsDashboard() {
   const [offlineFeedCost, setOfflineFeedCost] = useState(0);
   const [offlineWaterQty, setOfflineWaterQty] = useState(0);
   const [offlineWaterCost, setOfflineWaterCost] = useState(0);
+  const [offlineElecQty, setOfflineElecQty] = useState(0);
+  const [offlineElecCost, setOfflineElecCost] = useState(0);
+  
+  const [offlineExpense, setOfflineExpense] = useState(0);
+  const [offlineSalesRevenue, setOfflineSalesRevenue] = useState(0);
+  const [offlineSalesReceivables, setOfflineSalesReceivables] = useState(0);
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -74,11 +80,57 @@ export default function AnalyticsDashboard() {
            setOfflineWaterQty(addedQty);
            setOfflineWaterCost(addedCost);
          });
+         import("@/lib/offline/repositories/electricityUsageRepository").then(async mod => {
+           const all = await mod.electricityUsageRepository.getAll();
+           let addedQty = 0;
+           let addedCost = 0;
+           all.forEach((item: any) => {
+             if (item.isOffline) {
+               addedQty += Number(item.units_consumed || 0);
+               addedCost += Number(item.total_cost || (Number(item.units_consumed || 0) * Number(item.cost_per_unit || 0)));
+             }
+           });
+           setOfflineElecQty(addedQty);
+           setOfflineElecCost(addedCost);
+         });
+         import("@/lib/offline/repositories/expenseRepository").then(async mod => {
+           const all = await mod.expenseRepository.getAll();
+           let addedCost = 0;
+           all.forEach((item: any) => {
+             if (item.isOffline) {
+               addedCost += Number(item.amount || 0);
+             }
+           });
+           setOfflineExpense(addedCost);
+         });
+         import("@/lib/offline/repositories/salesRepository").then(async mod => {
+           const all = await mod.salesRepository.getAll();
+           let revenue = 0;
+           let receivables = 0;
+           all.forEach((sale: any) => {
+             if (sale.isOffline) {
+               let total = 0;
+               if (Array.isArray(sale.items)) {
+                 total = sale.items.reduce((sum: number, i: any) => sum + (Number(i.quantity || 0) * Number(i.unit_price || 0)), 0);
+               }
+               let paid = Number(sale.amount_paid || 0);
+               revenue += total;
+               receivables += Math.max(0, total - paid);
+             }
+           });
+           setOfflineSalesRevenue(revenue);
+           setOfflineSalesReceivables(receivables);
+         });
       } else {
          setOfflineFeedQty(0);
          setOfflineFeedCost(0);
          setOfflineWaterQty(0);
          setOfflineWaterCost(0);
+         setOfflineElecQty(0);
+         setOfflineElecCost(0);
+         setOfflineExpense(0);
+         setOfflineSalesRevenue(0);
+         setOfflineSalesReceivables(0);
       }
 
     } catch (err) {
@@ -166,18 +218,18 @@ export default function AnalyticsDashboard() {
 
       {/* KPI SECTION */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard title="Revenue" value={`₹${kpis.revenue?.toLocaleString() || 0}`} icon={DollarSign} colorClass="bg-emerald-100 text-emerald-600" />
-        <KPICard title="Expenses" value={`₹${(kpis.expenses + offlineFeedCost + offlineWaterCost)?.toLocaleString() || 0}`} icon={TrendingUp} colorClass="bg-red-100 text-red-600" />
-        <KPICard title="Net Profit" value={`₹${(kpis.netProfit - offlineFeedCost - offlineWaterCost)?.toLocaleString() || 0}`} icon={Activity} colorClass="bg-blue-100 text-blue-600" />
-        <KPICard title="Receivables" value={`₹${kpis.receivables?.toLocaleString() || 0}`} icon={DollarSign} colorClass="bg-amber-100 text-amber-600" />
+        <KPICard title="Revenue" value={`₹${(kpis.revenue + offlineSalesRevenue)?.toLocaleString() || 0}`} icon={DollarSign} colorClass="bg-emerald-100 text-emerald-600" />
+        <KPICard title="Expenses" value={`₹${(kpis.expenses + offlineFeedCost + offlineWaterCost + offlineElecCost + offlineExpense)?.toLocaleString() || 0}`} icon={TrendingUp} colorClass="bg-red-100 text-red-600" />
+        <KPICard title="Net Profit" value={`₹${(kpis.netProfit + offlineSalesRevenue - offlineFeedCost - offlineWaterCost - offlineElecCost - offlineExpense)?.toLocaleString() || 0}`} icon={Activity} colorClass="bg-blue-100 text-blue-600" />
+        <KPICard title="Receivables" value={`₹${(kpis.receivables + offlineSalesReceivables)?.toLocaleString() || 0}`} icon={DollarSign} colorClass="bg-amber-100 text-amber-600" />
         
         <KPICard title="Live Animals" value={kpis.liveAnimals || 0} icon={Users} colorClass="bg-indigo-100 text-indigo-600" />
         <KPICard title="Mortality Rate" value={`${kpis.mortalityRate?.toFixed(2) || 0}%`} subtext={`${kpis.mortalityCount || 0} deaths`} icon={AlertTriangle} colorClass="bg-rose-100 text-rose-600" />
         
         <KPICard title="Feed Consumed" value={`${(kpis.feedConsumed + offlineFeedQty)?.toLocaleString() || 0} kg`} subtext={`Efficiency: ${((kpis.feedConsumed + offlineFeedQty) / (kpis.liveAnimals || 1))?.toFixed(2)} kg/animal`} icon={Package} colorClass="bg-orange-100 text-orange-600" />
         <KPICard title="Water Consumed" value={`${(kpis.waterConsumed + offlineWaterQty)?.toLocaleString() || 0} L`} subtext={`Cost: ₹${(kpis.waterCost + offlineWaterCost)?.toFixed(2)}`} icon={Droplets} colorClass="bg-cyan-100 text-cyan-600" />
-        <KPICard title="Elec Consumed" value={`${kpis.elecConsumed?.toLocaleString() || 0} kWh`} subtext={`Cost: ₹${kpis.elecCost?.toFixed(2)}`} icon={Zap} colorClass="bg-yellow-100 text-yellow-600" />
-        <KPICard title="Utility Efficiency" value={`Water: ${((kpis.waterConsumed + offlineWaterQty) / (kpis.liveAnimals || 1))?.toFixed(2)} L/A`} subtext={`Elec: ${kpis.elecPerAnimal?.toFixed(2)} kWh/A`} icon={Activity} colorClass="bg-purple-100 text-purple-600" />
+        <KPICard title="Elec Consumed" value={`${(kpis.elecConsumed + offlineElecQty)?.toLocaleString() || 0} kWh`} subtext={`Cost: ₹${(kpis.elecCost + offlineElecCost)?.toFixed(2)}`} icon={Zap} colorClass="bg-yellow-100 text-yellow-600" />
+        <KPICard title="Utility Efficiency" value={`Water: ${((kpis.waterConsumed + offlineWaterQty) / (kpis.liveAnimals || 1))?.toFixed(2)} L/A`} subtext={`Elec: ${((kpis.elecConsumed + offlineElecQty) / (kpis.liveAnimals || 1))?.toFixed(2)} kWh/A`} icon={Activity} colorClass="bg-purple-100 text-purple-600" />
       </div>
 
       {/* CHARTS ROW 1: FINANCIALS */}

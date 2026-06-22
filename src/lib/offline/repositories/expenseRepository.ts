@@ -33,6 +33,11 @@ export const expenseRepository = {
     if (typeof window === 'undefined') throw new Error("Cannot create offline from server");
     
     console.log("create() called", { onLine: navigator.onLine, data });
+    
+    // Enforce idempotency key
+    if (!data.client_request_id) {
+      data.client_request_id = uuidv4();
+    }
 
     const saveOffline = async () => {
       const localId = uuidv4();

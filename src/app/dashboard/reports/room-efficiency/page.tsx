@@ -8,6 +8,8 @@ import { Download } from "lucide-react";
 export default function RoomEfficiencyPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [offlineFeedCosts, setOfflineFeedCosts] = useState<Record<string, number>>({});
+  const [offlineUtilityCosts, setOfflineUtilityCosts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch(`/api/reports/room-efficiency`)
@@ -16,6 +18,44 @@ export default function RoomEfficiencyPage() {
         setData(d.data || []);
         setLoading(false);
       });
+
+    if (!navigator.onLine) {
+      import("@/lib/offline/repositories/feedConsumptionRepository").then(async mod => {
+        const all = await mod.feedConsumptionRepository.getAll();
+        const feedCosts: Record<string, number> = {};
+        all.forEach((item: any) => {
+          if (item.isOffline && item.room_id) {
+             feedCosts[item.room_id] = (feedCosts[item.room_id] || 0) + Number(item.cost || 0);
+          }
+        });
+        setOfflineFeedCosts(feedCosts);
+      });
+
+      const fetchUtility = async () => {
+        const utilCosts: Record<string, number> = {};
+        
+        const wMod = await import("@/lib/offline/repositories/waterUsageRepository");
+        const wAll = await wMod.waterUsageRepository.getAll();
+        wAll.forEach((item: any) => {
+          if (item.isOffline && item.room_id) {
+             const cost = Number(item.total_cost || (Number(item.actual_consumption_liters || 0) * Number(item.cost_per_liter || 0)));
+             utilCosts[item.room_id] = (utilCosts[item.room_id] || 0) + cost;
+          }
+        });
+
+        const eMod = await import("@/lib/offline/repositories/electricityUsageRepository");
+        const eAll = await eMod.electricityUsageRepository.getAll();
+        eAll.forEach((item: any) => {
+          if (item.isOffline && item.room_id) {
+             const cost = Number(item.total_cost || (Number(item.units_consumed || 0) * Number(item.cost_per_unit || 0)));
+             utilCosts[item.room_id] = (utilCosts[item.room_id] || 0) + cost;
+          }
+        });
+
+        setOfflineUtilityCosts(utilCosts);
+      };
+      fetchUtility();
+    }
   }, []);
 
   const handleExport = async (format: 'excel' | 'pdf') => {
@@ -101,10 +141,16 @@ export default function RoomEfficiencyPage() {
                     </td>
                     <td className="py-3 text-red-600">{r.mortality}</td>
                     <td className="py-3 text-green-600">₹{(r.revenue || 0).toFixed(2)}</td>
-                    <td className="py-3 text-red-600">₹{(r.feedCost || 0).toFixed(2)}</td>
-                    <td className="py-3 text-red-600">₹{(r.utilityCost || 0).toFixed(2)}</td>
-                    <td className={`py-3 font-bold ${(r.profitability || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                      ₹{(r.profitability || 0).toFixed(2)}
+                    <td className="py-3 text-red-600 flex items-center gap-2">
+                      ₹{((r.feedCost || 0) + (offlineFeedCosts[r.id] || 0)).toFixed(2)}
+                      {(offlineFeedCosts[r.id] || 0) > 0 && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase">Pending</span>}
+                    </td>
+                    <td className="py-3 text-red-600 flex items-center gap-2">
+                      ₹{((r.utilityCost || 0) + (offlineUtilityCosts[r.id] || 0)).toFixed(2)}
+                      {(offlineUtilityCosts[r.id] || 0) > 0 && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase">Pending</span>}
+                    </td>
+                    <td className={`py-3 font-bold ${((r.profitability || 0) - (offlineFeedCosts[r.id] || 0) - (offlineUtilityCosts[r.id] || 0)) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      ₹{((r.profitability || 0) - (offlineFeedCosts[r.id] || 0) - (offlineUtilityCosts[r.id] || 0)).toFixed(2)}
                     </td>
                   </tr>
                 ))}

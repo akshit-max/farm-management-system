@@ -11,7 +11,8 @@ const createExpenseSchema = z.object({
   category: z.string().min(1, "Category is required"),
   description: z.string().min(1, "Description is required"),
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -40,12 +41,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createExpenseSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existing = await db.expense.findUnique({
+        where: { client_request_id: parsedData.client_request_id }
+      });
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 });
+      }
+    }
+
     await checkFinancialLock(farmId, parsedData.expense_date);
 
     const expense = await db.expense.create({
       data: {
         farm_id: farmId,
         created_by: session.user.id,
+        sync_status: 'SYNCED',
         ...parsedData
       }
     });

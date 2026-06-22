@@ -18,6 +18,8 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
+import { electricityUsageRepository } from "@/lib/offline/repositories/electricityUsageRepository";
+
 export function ElectricityUsageForm({ onSuccess, initialData, onCancel }: { onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -75,16 +77,11 @@ export function ElectricityUsageForm({ onSuccess, initialData, onCancel }: { onS
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/electricity-usage/${initialData.id}` : "/api/electricity-usage";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
+      if (initialData) {
+        await electricityUsageRepository.update(initialData.id, data);
+      } else {
+        await electricityUsageRepository.create(data);
+      }
       
       toast.success(initialData ? "Electricity usage updated!" : "Electricity usage recorded!");
       reset();

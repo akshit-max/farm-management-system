@@ -8,6 +8,8 @@ import { ElectricityUsageForm } from "@/features/electricity/components/Electric
 import { toast } from "sonner";
 import { useRBAC } from "@/lib/rbac-client";
 
+import { electricityUsageRepository } from "@/lib/offline/repositories/electricityUsageRepository";
+
 export default function ElectricityUsagePage() {
   const { canMutate } = useRBAC();
   const [usages, setUsages] = useState([]);
@@ -18,10 +20,8 @@ export default function ElectricityUsagePage() {
   const fetchUsages = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/electricity-usage");
-      if (!res.ok) throw new Error("Failed to fetch electricity usage");
-      const data = await res.json();
-      setUsages(data.data || []);
+      const all = await electricityUsageRepository.getAll();
+      setUsages(all as any);
     } catch (error) {
       toast.error("Failed to load electricity usage records");
     } finally {
