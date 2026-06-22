@@ -8,6 +8,8 @@ import { WaterUsageForm } from "@/features/water/components/WaterUsageForm";
 import { toast } from "sonner";
 import { useRBAC } from "@/lib/rbac-client";
 
+import { waterUsageRepository } from "@/lib/offline/repositories/waterUsageRepository";
+
 export default function WaterUsagePage() {
   const { canMutate } = useRBAC();
   const [usages, setUsages] = useState([]);
@@ -18,10 +20,8 @@ export default function WaterUsagePage() {
   const fetchUsages = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/water-usage");
-      if (!res.ok) throw new Error("Failed to fetch water usage");
-      const data = await res.json();
-      setUsages(data.data || []);
+      const all = await waterUsageRepository.getAll();
+      setUsages(all as any);
     } catch (error) {
       toast.error("Failed to load water usage records");
     } finally {

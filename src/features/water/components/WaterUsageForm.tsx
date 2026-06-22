@@ -19,6 +19,8 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
+import { waterUsageRepository } from "@/lib/offline/repositories/waterUsageRepository";
+
 export function WaterUsageForm({ onSuccess, initialData, onCancel }: { onSuccess: () => void; initialData?: any; onCancel?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -67,16 +69,11 @@ export function WaterUsageForm({ onSuccess, initialData, onCancel }: { onSuccess
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/water-usage/${initialData.id}` : "/api/water-usage";
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
+      if (initialData) {
+        await waterUsageRepository.update(initialData.id, data);
+      } else {
+        await waterUsageRepository.create(data);
+      }
       
       toast.success(initialData ? "Water usage updated!" : "Water usage recorded!");
       reset();

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { waterUsageRepository } from "@/lib/offline/repositories/waterUsageRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -19,8 +20,7 @@ export function WaterUsageTable({ data, onEdit, onRefresh, canMutate }: { data: 
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/water-usage/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await waterUsageRepository.delete(deleteId);
       toast.success("Record deleted successfully");
       onRefresh();
     } catch (err: any) {
@@ -34,7 +34,12 @@ export function WaterUsageTable({ data, onEdit, onRefresh, canMutate }: { data: 
     const baseColumns: any[] = [
       columnHelper.accessor("date", {
         header: "Date",
-        cell: (info) => format(new Date(info.getValue()), "PP"),
+        cell: (info) => (
+          <div className="flex items-center">
+            {format(new Date(info.getValue()), "PP")}
+            {info.row.original.isOffline && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase font-medium">Pending Sync</span>}
+          </div>
+        )
       }),
       columnHelper.accessor("room.name", {
         header: "Room",

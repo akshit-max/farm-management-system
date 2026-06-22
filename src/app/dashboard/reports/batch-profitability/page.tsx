@@ -11,6 +11,7 @@ export default function BatchProfitabilityPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [offlineBatchCosts, setOfflineBatchCosts] = useState<Record<string, number>>({});
+  const [offlineWaterCosts, setOfflineWaterCosts] = useState<Record<string, number>>({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -33,6 +34,23 @@ export default function BatchProfitabilityPage() {
             }
           });
           setOfflineBatchCosts(batchCosts);
+        });
+
+        import("@/lib/offline/repositories/waterUsageRepository").then(async mod => {
+          const all = await mod.waterUsageRepository.getAll();
+          const waterCosts: Record<string, number> = {};
+          all.forEach((item: any) => {
+            if (item.isOffline) {
+               const cost = Number(item.total_cost || (Number(item.actual_consumption_liters || 0) * Number(item.cost_per_liter || 0)));
+               if (item.batch_id) {
+                 waterCosts[item.batch_id] = (waterCosts[item.batch_id] || 0) + cost;
+               } else if (item.room_id) {
+                 // Without batch ID, attribute to all batches in that room (simplified offline projection logic)
+                 waterCosts[`room_${item.room_id}`] = (waterCosts[`room_${item.room_id}`] || 0) + cost;
+               }
+            }
+          });
+          setOfflineWaterCosts(waterCosts);
         });
       }
 
@@ -125,17 +143,20 @@ export default function BatchProfitabilityPage() {
                   <td className="px-6 py-4">{row.animalCount}</td>
                   <td className="px-6 py-4">₹{row.purchaseCost?.toFixed(2)}</td>
                   <td className="px-6 py-4 flex items-center gap-2">
-                    ₹{(row.feedCost + offlineBatchCosts[row.batch_id] || row.feedCost)?.toFixed(2)}
+                    ₹{(row.feedCost + (offlineBatchCosts[row.batch_id] || 0))?.toFixed(2)}
                     {(offlineBatchCosts[row.batch_id] || 0) > 0 && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase" title={`Offline pending: ₹${offlineBatchCosts[row.batch_id]}`}>Pending Sync</span>}
                   </td>
-                  <td className="px-6 py-4">₹{row.utilityCost?.toFixed(2)}</td>
+                  <td className="px-6 py-4 flex items-center gap-2">
+                    ₹{(row.utilityCost + (offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0))?.toFixed(2)}
+                    {((offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0)) > 0 && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase">Pending Sync</span>}
+                  </td>
                   <td className="px-6 py-4 font-medium text-emerald-600">₹{row.revenue?.toFixed(2)}</td>
-                  <td className={`px-6 py-4 font-bold ${(row.netProfit - (offlineBatchCosts[row.batch_id] || 0)) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    ₹{(row.netProfit - (offlineBatchCosts[row.batch_id] || 0))?.toFixed(2)}
+                  <td className={`px-6 py-4 font-bold ${(row.netProfit - (offlineBatchCosts[row.batch_id] || 0) - ((offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0))) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    ₹{(row.netProfit - (offlineBatchCosts[row.batch_id] || 0) - ((offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0)))?.toFixed(2)}
                   </td>
                   <td className="px-6 py-4">
-                    {((row.totalCost + (offlineBatchCosts[row.batch_id] || 0)) > 0 
-                      ? ((row.netProfit - (offlineBatchCosts[row.batch_id] || 0)) / (row.totalCost + (offlineBatchCosts[row.batch_id] || 0))) * 100 
+                    {((row.totalCost + (offlineBatchCosts[row.batch_id] || 0) + ((offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0))) > 0 
+                      ? ((row.netProfit - (offlineBatchCosts[row.batch_id] || 0) - ((offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0))) / (row.totalCost + (offlineBatchCosts[row.batch_id] || 0) + ((offlineWaterCosts[row.batch_id] || 0) + (offlineWaterCosts[`room_${row.room_id}`] || 0)))) * 100 
                       : 0).toFixed(2)}%
                   </td>
                 </tr>

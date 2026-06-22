@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
 
       return {
         batch_id: b.id,
+        room_id: b.room_id,
         batch: b.batch_number,
         category: b.animal_category?.name || 'Unknown',
         animalCount: b.quantity,

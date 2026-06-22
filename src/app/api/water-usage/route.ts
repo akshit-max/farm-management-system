@@ -15,6 +15,7 @@ const createWaterUsageSchema = z.object({
   source: z.string().min(1, "Source is required"),
   cost_per_liter: z.coerce.number().min(0, "Cost must be >= 0"),
   notes: z.string().optional(),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -44,6 +45,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createWaterUsageSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existing = await db.waterUsage.findUnique({
+        where: { client_request_id: parsedData.client_request_id }
+      });
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 });
+      }
+    }
+
     await checkFinancialLock(farmId, parsedData.date);
 
     const roomCheck = await db.room.findFirst({
@@ -64,7 +74,8 @@ export async function POST(req: NextRequest) {
       data: { 
         farm_id: farmId, 
         ...parsedData,
-        total_cost 
+        total_cost,
+        sync_status: 'SYNCED'
       },
     });
 
