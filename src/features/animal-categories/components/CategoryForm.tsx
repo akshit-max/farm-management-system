@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { animalCategoryRepository } from "@/lib/offline/repositories/animalCategoryRepository";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -47,23 +48,17 @@ export function CategoryForm({ onSuccess, initialData, onCancel }: { onSuccess: 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/animal-categories/${initialData.id}` : "/api/animal-categories";
-      const method = initialData ? "PUT" : "POST";
-      
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to save");
+      if (initialData) {
+        await animalCategoryRepository.update(initialData.id, data);
+        toast.success("Category updated!");
+      } else {
+        await animalCategoryRepository.create(data);
+        toast.success("Category saved!");
       }
-      toast.success(initialData ? "Category updated!" : "Category saved!");
       reset();
       onSuccess();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }

@@ -10,6 +10,7 @@ const createCategorySchema = z.object({
   description: z.string().optional(),
   mortality_percentage: z.number().min(0).max(100),
   sale_options: z.string().optional(),
+  client_request_id: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -53,6 +54,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createCategorySchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.animalCategory.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingReq) {
+        return NextResponse.json(existingReq, { status: 200 });
+      }
+    }
+
     const existing = await db.animalCategory.findFirst({
       where: { farm_id: farmId, name: parsedData.name, deleted_at: null },
     });
@@ -62,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     const category = await db.animalCategory.create({
-      data: { farm_id: farmId, ...parsedData },
+      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "AnimalCategory", category.id);

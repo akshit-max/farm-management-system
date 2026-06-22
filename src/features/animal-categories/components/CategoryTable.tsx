@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Trash2, Search, Edit, MoreHorizontal, Filter, Layers, AlertCircle } from "lucide-react";
+import { Trash2, Search, Edit, MoreHorizontal, Filter, Layers, AlertCircle, CloudOff } from "lucide-react";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 import { useRBAC } from "@/lib/rbac-client";
+import { animalCategoryRepository } from "@/lib/offline/repositories/animalCategoryRepository";
 
 const columnHelper = createColumnHelper<any>();
 
@@ -17,38 +18,31 @@ export function CategoryTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
   const [isDeleting, setIsDeleting] = useState(false);
   const { canMutate } = useRBAC();
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/animal-categories`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data);
-      }
+      const allCategories = await animalCategoryRepository.getAll();
+      setData(allCategories);
     } catch (err) {
       toast.error("Failed to load categories");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCategories();
-  }, [keyIndex]);
+  }, [fetchCategories, keyIndex]);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/animal-categories/${deleteId}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success("Category deleted successfully");
-        fetchCategories();
-      } else {
-        toast.error("Failed to delete category");
-      }
-    } catch (err) {
-      toast.error("Network error");
+      await animalCategoryRepository.delete(deleteId);
+      toast.success("Category deleted successfully");
+      fetchCategories();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete category");
     }
     setIsDeleting(false);
     setDeleteId(null);
@@ -57,7 +51,16 @@ export function CategoryTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
   const columns = [
     columnHelper.accessor("name", { 
       header: "Category Name",
-      cell: (info) => <span className="font-semibold text-text-heading">{info.getValue()}</span>
+      cell: (info) => (
+        <span className="font-semibold text-text-heading flex items-center gap-2">
+          {info.getValue()}
+          {info.row.original.isOffline && (
+            <span className="flex items-center text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium" title="Pending Sync">
+              <CloudOff className="w-3 h-3 mr-1" /> Pending
+            </span>
+          )}
+        </span>
+      )
     }),
     columnHelper.accessor("mortality_percentage", { 
       header: "Max Mortality %",

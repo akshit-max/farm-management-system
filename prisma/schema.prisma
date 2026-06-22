@@ -236,11 +236,12 @@ model AnimalCategory {
   stage_definitions StageDefinition[]
   animal_batches    AnimalBatch[]
 
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
-  last_modified DateTime  @default(now()) @updatedAt
-  sync_status   String    @default("PENDING")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
+  last_modified     DateTime  @default(now()) @updatedAt
+  sync_status       String    @default("PENDING")
+  client_request_id String?   @unique
 
   @@unique([farm_id, name])
   @@index([farm_id])
