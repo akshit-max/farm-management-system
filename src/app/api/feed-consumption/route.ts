@@ -13,6 +13,7 @@ const createFeedConsumptionSchema = z.object({
   quantity_kg: z.coerce.number().min(0.01, "Quantity must be > 0"),
   cost: z.coerce.number().min(0, "Cost must be >= 0"),
   notes: z.string().optional(),
+  client_request_id: z.string().uuid().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -45,6 +46,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsedData = createFeedConsumptionSchema.parse(body);
 
+    if (parsedData.client_request_id) {
+      const existing = await db.feedConsumption.findFirst({
+        where: { client_request_id: parsedData.client_request_id }
+      });
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 });
+      }
+    }
+
     await checkFinancialLock(farmId, new Date(parsedData.date));
 
     // Verify batch belongs to farm
@@ -74,6 +84,7 @@ export async function POST(req: NextRequest) {
           quantity_kg: parsedData.quantity_kg,
           cost: parsedData.cost,
           notes: parsedData.notes,
+          client_request_id: parsedData.client_request_id,
         }
       });
 

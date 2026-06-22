@@ -16,12 +16,17 @@ import { toast } from "sonner";
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
+import { feedConsumptionRepository } from "@/lib/offline/repositories/feedConsumptionRepository";
+
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [period, setPeriod] = useState("month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  
+  const [offlineFeedQty, setOfflineFeedQty] = useState(0);
+  const [offlineFeedCost, setOfflineFeedCost] = useState(0);
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -38,6 +43,27 @@ export default function AnalyticsDashboard() {
       } else {
         toast.error("Failed to load analytics data");
       }
+
+      // Calculate offline additions
+      if (!navigator.onLine) {
+         import("@/lib/offline/repositories/feedConsumptionRepository").then(async mod => {
+           const all = await mod.feedConsumptionRepository.getAll();
+           let addedQty = 0;
+           let addedCost = 0;
+           all.forEach((item: any) => {
+             if (item.isOffline) {
+               addedQty += Number(item.quantity_kg || 0);
+               addedCost += Number(item.cost || 0);
+             }
+           });
+           setOfflineFeedQty(addedQty);
+           setOfflineFeedCost(addedCost);
+         });
+      } else {
+         setOfflineFeedQty(0);
+         setOfflineFeedCost(0);
+      }
+
     } catch (err) {
       toast.error("Network error");
     } finally {
@@ -124,14 +150,14 @@ export default function AnalyticsDashboard() {
       {/* KPI SECTION */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard title="Revenue" value={`₹${kpis.revenue?.toLocaleString() || 0}`} icon={DollarSign} colorClass="bg-emerald-100 text-emerald-600" />
-        <KPICard title="Expenses" value={`₹${kpis.expenses?.toLocaleString() || 0}`} icon={TrendingUp} colorClass="bg-red-100 text-red-600" />
-        <KPICard title="Net Profit" value={`₹${kpis.netProfit?.toLocaleString() || 0}`} icon={Activity} colorClass="bg-blue-100 text-blue-600" />
+        <KPICard title="Expenses" value={`₹${(kpis.expenses + offlineFeedCost)?.toLocaleString() || 0}`} icon={TrendingUp} colorClass="bg-red-100 text-red-600" />
+        <KPICard title="Net Profit" value={`₹${(kpis.netProfit - offlineFeedCost)?.toLocaleString() || 0}`} icon={Activity} colorClass="bg-blue-100 text-blue-600" />
         <KPICard title="Receivables" value={`₹${kpis.receivables?.toLocaleString() || 0}`} icon={DollarSign} colorClass="bg-amber-100 text-amber-600" />
         
         <KPICard title="Live Animals" value={kpis.liveAnimals || 0} icon={Users} colorClass="bg-indigo-100 text-indigo-600" />
         <KPICard title="Mortality Rate" value={`${kpis.mortalityRate?.toFixed(2) || 0}%`} subtext={`${kpis.mortalityCount || 0} deaths`} icon={AlertTriangle} colorClass="bg-rose-100 text-rose-600" />
         
-        <KPICard title="Feed Consumed" value={`${kpis.feedConsumed?.toLocaleString() || 0} kg`} subtext={`Efficiency: ${kpis.feedEfficiency?.toFixed(2)} kg/animal`} icon={Package} colorClass="bg-orange-100 text-orange-600" />
+        <KPICard title="Feed Consumed" value={`${(kpis.feedConsumed + offlineFeedQty)?.toLocaleString() || 0} kg`} subtext={`Efficiency: ${((kpis.feedConsumed + offlineFeedQty) / (kpis.liveAnimals || 1))?.toFixed(2)} kg/animal`} icon={Package} colorClass="bg-orange-100 text-orange-600" />
         <KPICard title="Water Consumed" value={`${kpis.waterConsumed?.toLocaleString() || 0} L`} subtext={`Cost: ₹${kpis.waterCost?.toFixed(2)}`} icon={Droplets} colorClass="bg-cyan-100 text-cyan-600" />
         <KPICard title="Elec Consumed" value={`${kpis.elecConsumed?.toLocaleString() || 0} kWh`} subtext={`Cost: ₹${kpis.elecCost?.toFixed(2)}`} icon={Zap} colorClass="bg-yellow-100 text-yellow-600" />
         <KPICard title="Utility Efficiency" value={`Water: ${kpis.waterPerAnimal?.toFixed(2)} L/A`} subtext={`Elec: ${kpis.elecPerAnimal?.toFixed(2)} kWh/A`} icon={Activity} colorClass="bg-purple-100 text-purple-600" />

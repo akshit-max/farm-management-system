@@ -9,21 +9,23 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { format } from "date-fns";
 
+import { feedConsumptionRepository } from "@/lib/offline/repositories/feedConsumptionRepository";
+import { Trash2 } from "lucide-react";
+import { useRBAC } from "@/lib/rbac-client";
+
 const columnHelper = createColumnHelper<any>();
 
 export function FeedConsumptionTable({ keyIndex }: { keyIndex: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
+  const { canMutate } = useRBAC();
 
   const fetchConsumptions = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/feed-consumption`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data);
-      }
+      const all = await feedConsumptionRepository.getAll();
+      setData(all);
     } catch (err) {
       toast.error("Failed to load feed consumption records");
     } finally {
@@ -35,6 +37,17 @@ export function FeedConsumptionTable({ keyIndex }: { keyIndex: number }) {
     fetchConsumptions();
   }, [keyIndex]);
 
+  const handleDelete = async (row: any) => {
+    if (!confirm("Delete this record?")) return;
+    try {
+      await feedConsumptionRepository.delete(row.id, row);
+      toast.success("Record deleted");
+      fetchConsumptions();
+    } catch(err: any) {
+      toast.error(err.message || "Failed to delete");
+    }
+  };
+
   const columns = [
     columnHelper.accessor("date", { 
       header: "Date",
@@ -42,6 +55,7 @@ export function FeedConsumptionTable({ keyIndex }: { keyIndex: number }) {
         <div className="flex items-center text-gray-900 font-medium">
           <Calendar className="w-4 h-4 mr-2 text-gray-400" />
           {format(new Date(info.getValue()), 'MMM d, yyyy')}
+          {info.row.original.isOffline && <span className="ml-2 px-1.5 py-0.5 text-[10px] uppercase bg-yellow-100 text-yellow-800 rounded">Pending Sync</span>}
         </div>
       )
     }),
@@ -65,6 +79,15 @@ export function FeedConsumptionTable({ keyIndex }: { keyIndex: number }) {
       header: "Notes",
       cell: (info) => <span className="text-gray-500 truncate max-w-[200px] block" title={info.getValue()}>{info.getValue() || "-"}</span>
     }),
+    columnHelper.display({
+      id: "actions",
+      header: "",
+      cell: (info) => canMutate ? (
+        <button onClick={() => handleDelete(info.row.original)} className="p-1 text-red-500 hover:bg-red-50 rounded">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      ) : null
+    })
   ];
 
   const table = useReactTable({

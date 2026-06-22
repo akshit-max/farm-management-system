@@ -15,11 +15,14 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
+import { feedConsumptionRepository } from "@/lib/offline/repositories/feedConsumptionRepository";
+
 export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [batches, setBatches] = useState<any[]>([]);
   const [feedTypes, setFeedTypes] = useState<any[]>([]);
   const [selectedFeedType, setSelectedFeedType] = useState<any>(null);
+  const [offlineAdjustments, setOfflineAdjustments] = useState<Record<string, number>>({});
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm({
     resolver: zodResolver(schema),
@@ -31,21 +34,47 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
   const watchFeedTypeId = watch("feed_type_id");
   const watchQuantity = watch("quantity_kg");
 
+  const loadData = async () => {
+    try {
+      const [bRes, fRes] = await Promise.all([
+        fetch(`/api/animal-batches`),
+        fetch(`/api/feed-types`)
+      ]);
+      const [bData, fData] = await Promise.all([
+        bRes.json(),
+        fRes.json()
+      ]);
+      setBatches(bData.data || []);
+      const fList = fData.data || [];
+      setFeedTypes(fList);
+
+      const adjs: Record<string, number> = {};
+      if (!navigator.onLine) {
+        for (const ft of fList) {
+           const a = await feedConsumptionRepository.getOfflineFeedAdjustments(ft.id);
+           adjs[ft.id] = (a.pending || 0) - (a.deleted || 0) + (a.updatedDelta || 0);
+        }
+      }
+      setOfflineAdjustments(adjs);
+    } catch (e) {
+      console.warn("Error loading form data", e);
+    }
+  };
+
   useEffect(() => {
-    fetch(`/api/animal-batches`)
-      .then(res => res.json())
-      .then(data => setBatches(data.data || []));
-      
-    fetch(`/api/feed-types`)
-      .then(res => res.json())
-      .then(data => setFeedTypes(data.data || []));
+    loadData();
   }, []);
+
+  const getAdjustedStock = (feed: any) => {
+    if (!feed) return 0;
+    const adj = offlineAdjustments[feed.id] || 0;
+    return feed.stock_quantity - adj;
+  };
 
   useEffect(() => {
     if (watchFeedTypeId) {
       const feed = feedTypes.find(f => f.id === watchFeedTypeId);
       setSelectedFeedType(feed);
-      // Auto-calculate cost based on standard cost per kg
       if (feed && watchQuantity) {
         setValue("cost", parseFloat((feed.cost_per_kg * Number(watchQuantity)).toFixed(2)));
       }
@@ -58,20 +87,18 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/feed-consumption", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
+      const feed = feedTypes.find(f => f.id === data.feed_type_id);
+      const currentStock = getAdjustedStock(feed);
+      if (data.quantity_kg > currentStock) {
+         throw new Error(`Insufficient stock. Projected available: ${currentStock} kg`);
+      }
+
+      await feedConsumptionRepository.create(data);
       
       toast.success("Feed consumption recorded!");
       reset({ batch_id: "", feed_type_id: "", date: new Date().toISOString().split('T')[0], quantity_kg: 0, cost: 0, notes: "" });
       onSuccess();
-      
-      // Refresh feed types to update stock locally
-      fetch(`/api/feed-types`).then(res => res.json()).then(data => setFeedTypes(data.data || []));
+      loadData();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -100,11 +127,14 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Feed Type <span className="text-red-500">*</span></label>
           <select {...register("feed_type_id")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500">
             <option value="">Select Feed...</option>
-            {feedTypes.map(f => (
-              <option key={f.id} value={f.id} disabled={f.stock_quantity <= 0}>
-                {f.name} (Stock: {f.stock_quantity}kg)
-              </option>
-            ))}
+            {feedTypes.map(f => {
+              const adjStock = getAdjustedStock(f);
+              return (
+                <option key={f.id} value={f.id} disabled={adjStock <= 0}>
+                  {f.name} (Projected Stock: {adjStock}kg)
+                </option>
+              );
+            })}
           </select>
           {errors.feed_type_id && <p className="text-red-500 text-xs mt-1">{errors.feed_type_id.message as string}</p>}
         </div>
@@ -112,7 +142,7 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Quantity (kg) <span className="text-red-500">*</span></label>
           <input type="number" step="0.01" {...register("quantity_kg")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500" />
           {errors.quantity_kg && <p className="text-red-500 text-xs mt-1">{errors.quantity_kg.message as string}</p>}
-          {selectedFeedType && <p className="text-xs text-gray-500 mt-1">Available: {selectedFeedType.stock_quantity} kg</p>}
+          {selectedFeedType && <p className="text-xs text-gray-500 mt-1">Available: {getAdjustedStock(selectedFeedType)} kg</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Total Cost <span className="text-red-500">*</span></label>

@@ -113,6 +113,38 @@ export const processSyncQueue = async () => {
             }
           }
         }
+
+        if (task.entity === 'FEED_CONSUMPTION') {
+          let response;
+          let method = 'POST';
+          let endpoint = '/api/feed-consumption';
+          
+          if (task.action === 'UPDATE') {
+            method = 'PUT';
+            endpoint = `/api/feed-consumption/${task.payload.id}`;
+          } else if (task.action === 'DELETE') {
+            method = 'DELETE';
+            endpoint = `/api/feed-consumption/${task.payload.id}`;
+          }
+
+          response = await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: task.action !== 'DELETE' ? JSON.stringify(task.payload) : undefined,
+          });
+
+          if (response.ok) {
+            await db.sync_queue.update(task.id, { status: 'SYNCED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_feed_consumptions.update(task.payload.id, { sync_status: 'SYNCED' });
+            }
+          } else {
+            await db.sync_queue.update(task.id, { status: 'FAILED' });
+            if (task.payload.id && task.action === 'CREATE') {
+              await db.offline_feed_consumptions.update(task.payload.id, { sync_status: 'FAILED' });
+            }
+          }
+        }
       } catch (error) {
         console.error('Sync error for task', task.id, error);
         // Do not update status on network failure so it retries later

@@ -10,6 +10,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 export default function BatchProfitabilityPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [offlineBatchCosts, setOfflineBatchCosts] = useState<Record<string, number>>({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -21,6 +22,20 @@ export default function BatchProfitabilityPage() {
       } else {
         toast.error("Failed to load report data");
       }
+
+      if (!navigator.onLine) {
+        import("@/lib/offline/repositories/feedConsumptionRepository").then(async mod => {
+          const all = await mod.feedConsumptionRepository.getAll();
+          const batchCosts: Record<string, number> = {};
+          all.forEach((item: any) => {
+            if (item.isOffline && item.batch_id) {
+               batchCosts[item.batch_id] = (batchCosts[item.batch_id] || 0) + Number(item.cost || 0);
+            }
+          });
+          setOfflineBatchCosts(batchCosts);
+        });
+      }
+
     } catch (err) {
       toast.error("Network error");
     } finally {
@@ -109,11 +124,20 @@ export default function BatchProfitabilityPage() {
                   <td className="px-6 py-4">{row.category}</td>
                   <td className="px-6 py-4">{row.animalCount}</td>
                   <td className="px-6 py-4">₹{row.purchaseCost?.toFixed(2)}</td>
-                  <td className="px-6 py-4">₹{row.feedCost?.toFixed(2)}</td>
+                  <td className="px-6 py-4 flex items-center gap-2">
+                    ₹{(row.feedCost + offlineBatchCosts[row.batch_id] || row.feedCost)?.toFixed(2)}
+                    {(offlineBatchCosts[row.batch_id] || 0) > 0 && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase" title={`Offline pending: ₹${offlineBatchCosts[row.batch_id]}`}>Pending Sync</span>}
+                  </td>
                   <td className="px-6 py-4">₹{row.utilityCost?.toFixed(2)}</td>
                   <td className="px-6 py-4 font-medium text-emerald-600">₹{row.revenue?.toFixed(2)}</td>
-                  <td className={`px-6 py-4 font-bold ${row.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>₹{row.netProfit?.toFixed(2)}</td>
-                  <td className="px-6 py-4">{row.roi?.toFixed(2)}%</td>
+                  <td className={`px-6 py-4 font-bold ${(row.netProfit - (offlineBatchCosts[row.batch_id] || 0)) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    ₹{(row.netProfit - (offlineBatchCosts[row.batch_id] || 0))?.toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4">
+                    {((row.totalCost + (offlineBatchCosts[row.batch_id] || 0)) > 0 
+                      ? ((row.netProfit - (offlineBatchCosts[row.batch_id] || 0)) / (row.totalCost + (offlineBatchCosts[row.batch_id] || 0))) * 100 
+                      : 0).toFixed(2)}%
+                  </td>
                 </tr>
               )) : (
                 <tr>
