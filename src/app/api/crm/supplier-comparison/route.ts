@@ -19,10 +19,11 @@ export async function GET(req: NextRequest) {
         feed_types: {
           include: {
             consumptions: {
+              where: { deleted_at: null },
               include: {
                 batch: {
                   include: {
-                    mortalities: true
+                    mortalities: { where: { deleted_at: null } }
                   }
                 }
               }

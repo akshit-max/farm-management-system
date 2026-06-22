@@ -84,8 +84,8 @@ export default function PaymentTermsPage() {
               {data.map((r, i) => (
                 <TableRow key={r.id || i}>
                   <TableCell className="font-medium">{r.company_name}</TableCell>
-                  {type === "customer" && <TableCell className="text-right font-bold text-red-500">₹{r.credit_limit?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || "0"}</TableCell>}
-                  <TableCell className="text-right">{r.credit_days || 0} days</TableCell>
+                  {type === "customer" && <TableCell className="text-right font-bold text-red-500">{r.credit_limit === null ? "No Limit" : `₹${r.credit_limit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}</TableCell>}
+                  <TableCell className="text-right">{r.credit_days === null ? "Not Configured" : `${r.credit_days} days`}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" onClick={() => handleUpdate(r.id)}>
                       Edit Terms

@@ -9,6 +9,7 @@ export function Navbar({ toggleSidebar }: { toggleSidebar?: () => void }) {
   const { data: session } = useSession();
   const userName = session?.user?.name || "User";
   const userRole = session?.user?.role || "";
+  const farmName = session?.user?.farm_name || "Main Farm";
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
@@ -24,7 +25,7 @@ export function Navbar({ toggleSidebar }: { toggleSidebar?: () => void }) {
           <div className="flex flex-col">
             <span className="text-[11px] text-text-secondary uppercase font-semibold tracking-wide">Farm</span>
             <div className="flex items-center gap-1 cursor-pointer group">
-              <span className="text-[14px] font-bold text-text-heading group-hover:text-brand-primary transition-colors">Main Farm</span>
+              <span className="text-[14px] font-bold text-text-heading group-hover:text-brand-primary transition-colors">{farmName}</span>
               <ChevronDown className="w-4 h-4 text-gray-500 group-hover:text-brand-primary transition-colors" />
             </div>
           </div>

@@ -198,6 +198,32 @@ export async function PUT(
         newTotal += newItem.quantity * newItem.unit_price;
       }
 
+      // Step 5.5: Credit Limit Validation
+      const txCustomer = await tx.customer.findUnique({
+        where: { id: parsed.customer_id },
+        include: { sales_invoices: { where: { deleted_at: null, id: { not: params.id } }, include: { payments: { where: { deleted_at: null } } } } }
+      });
+
+      if (txCustomer && txCustomer.credit_limit !== null) {
+        let currentOutstanding = 0;
+        for (const inv of txCustomer.sales_invoices) {
+          const paid = inv.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+          currentOutstanding += (inv.total - paid);
+        }
+        const projectedOutstanding = currentOutstanding + newTotal - totalPaid;
+        
+        if (txCustomer.credit_limit === 0 && projectedOutstanding > 0) {
+          throw new Error("NO_CREDIT_ALLOWED");
+        } else if (projectedOutstanding > txCustomer.credit_limit) {
+          throw new Error("CREDIT_LIMIT_EXCEEDED|" + JSON.stringify({
+            creditLimit: txCustomer.credit_limit,
+            currentOutstanding,
+            invoiceAmount: newTotal,
+            projectedOutstanding
+          }));
+        }
+      }
+
       // Step 6: Create new SalesInvoiceItem rows
       await tx.salesInvoiceItem.createMany({
         data: parsed.items.map((item) => ({
@@ -233,6 +259,16 @@ export async function PUT(
     await logAudit(session.user.id, farmId, "UPDATE", "SalesInvoice", params.id);
     return NextResponse.json({ success: true, mode: "full_edit", newTotal });
   } catch (error: any) {
+    if (error.message?.startsWith("CREDIT_LIMIT_EXCEEDED|")) {
+      const payload = JSON.parse(error.message.split("|")[1]);
+      return NextResponse.json({ code: "CREDIT_LIMIT_EXCEEDED", message: "This sale exceeds the customer's credit limit.", ...payload }, { status: 400 });
+    }
+    if (error.message === "NO_CREDIT_ALLOWED") {
+      return NextResponse.json({ code: "NO_CREDIT_ALLOWED", message: "Cash Sale Required" }, { status: 400 });
+    }
+    if (error.code === 'P2034' || error.message?.includes("write conflict") || error.message?.includes("deadlock")) {
+      return NextResponse.json({ code: "CONCURRENT_TRANSACTION", message: "Another sale is currently being processed for this customer." }, { status: 409 });
+    }
     if (error instanceof z.ZodError)
       return NextResponse.json(
         { error: error.flatten().fieldErrors },

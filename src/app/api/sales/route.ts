@@ -106,14 +106,42 @@ export async function POST(req: NextRequest) {
       }
 
       let paymentStatus = "PENDING";
-      if (parsedData.payment_received && parsedData.amount_paid && parsedData.amount_paid > 0) {
-        if (parsedData.amount_paid > totalAmount + 0.01) {
-          throw new Error(`Amount paid (${parsedData.amount_paid}) cannot exceed invoice total (${totalAmount})`);
+      const immediatePayment = (parsedData.payment_received && parsedData.amount_paid) ? parsedData.amount_paid : 0;
+      
+      if (immediatePayment > 0) {
+        if (immediatePayment > totalAmount + 0.01) {
+          throw new Error(`Amount paid (${immediatePayment}) cannot exceed invoice total (${totalAmount})`);
         }
-        if (Math.abs(totalAmount - parsedData.amount_paid) < 0.01) {
+        if (Math.abs(totalAmount - immediatePayment) < 0.01) {
           paymentStatus = "PAID";
         } else {
           paymentStatus = "PARTIAL";
+        }
+      }
+
+      // 1.5 Credit Limit Validation
+      const txCustomer = await tx.customer.findUnique({
+        where: { id: parsedData.customer_id },
+        include: { sales_invoices: { where: { deleted_at: null }, include: { payments: { where: { deleted_at: null } } } } }
+      });
+      
+      if (txCustomer && txCustomer.credit_limit !== null) {
+        let currentOutstanding = 0;
+        for (const inv of txCustomer.sales_invoices) {
+          const paid = inv.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+          currentOutstanding += (inv.total - paid);
+        }
+        const projectedOutstanding = currentOutstanding + totalAmount - immediatePayment;
+        
+        if (txCustomer.credit_limit === 0 && projectedOutstanding > 0) {
+          throw new Error("NO_CREDIT_ALLOWED");
+        } else if (projectedOutstanding > txCustomer.credit_limit) {
+          throw new Error("CREDIT_LIMIT_EXCEEDED|" + JSON.stringify({
+            creditLimit: txCustomer.credit_limit,
+            currentOutstanding,
+            invoiceAmount: totalAmount,
+            projectedOutstanding
+          }));
         }
       }
 
@@ -178,8 +206,18 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
+    if (error.message?.startsWith("CREDIT_LIMIT_EXCEEDED|")) {
+      const payload = JSON.parse(error.message.split("|")[1]);
+      return NextResponse.json({ code: "CREDIT_LIMIT_EXCEEDED", message: "This sale exceeds the customer's credit limit.", ...payload }, { status: 400 });
+    }
+    if (error.message === "NO_CREDIT_ALLOWED") {
+      return NextResponse.json({ code: "NO_CREDIT_ALLOWED", message: "Cash Sale Required" }, { status: 400 });
+    }
     if (error.message?.includes("LOCKED")) {
       return NextResponse.json(JSON.parse(error.message), { status: 423 });
+    }
+    if (error.code === 'P2034' || error.message?.includes("write conflict") || error.message?.includes("deadlock")) {
+      return NextResponse.json({ code: "CONCURRENT_TRANSACTION", message: "Another sale is currently being processed for this customer." }, { status: 409 });
     }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: error.message || "Failed to create invoice" }, { status: 500 });

@@ -22,7 +22,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
           const { email, password } = parsedCredentials.data;
           const user = await db.user.findUnique({
             where: { email },
-            include: { role: true },
+            include: { role: true, farm: true },
           });
           
           if (!user) return null;
@@ -35,6 +35,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
               name: user.name,
               role: user.role.name,
               farm_id: (user as any).farm_id,
+              farm_name: (user as any).farm?.name || "Main Farm",
             };
           }
         }
@@ -48,6 +49,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
         token.role = user.role;
         token.id = user.id;
         token.farm_id = user.farm_id;
+        token.farm_name = user.farm_name;
       }
       return token;
     },
@@ -56,6 +58,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
         session.user.role = token.role as string;
         session.user.id = token.id as string;
         session.user.farm_id = token.farm_id as string | null;
+        session.user.farm_name = token.farm_name as string | null;
       }
       return session;
     },

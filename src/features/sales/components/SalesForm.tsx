@@ -137,7 +137,49 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
+      if (!res.ok) {
+        if (json.code === "CREDIT_LIMIT_EXCEEDED") {
+          toast.error(
+            <div className="flex flex-col gap-2 w-full">
+              <span className="font-bold text-base">Credit Limit Exceeded</span>
+              <div className="text-sm space-y-1 mt-1">
+                <div className="flex justify-between"><span>Customer Limit:</span> <span>₹{json.creditLimit}</span></div>
+                <div className="flex justify-between"><span>Current Outstanding:</span> <span>₹{json.currentOutstanding}</span></div>
+                <div className="flex justify-between"><span>New Invoice:</span> <span>₹{json.invoiceAmount}</span></div>
+                <div className="flex justify-between border-t border-red-200/30 pt-1 font-bold"><span>Projected Outstanding:</span> <span>₹{json.projectedOutstanding}</span></div>
+              </div>
+              <span className="text-xs mt-2 block">Collect payment or increase the credit limit before proceeding.</span>
+            </div>,
+            { duration: 8000 }
+          );
+          return;
+        } else if (json.code === "NO_CREDIT_ALLOWED") {
+          toast.error(
+            <div className="flex flex-col gap-1 w-full">
+              <span className="font-bold text-base">Cash Sale Required</span>
+              <span className="text-sm">This customer is configured for immediate payment only.</span>
+            </div>,
+            { duration: 6000 }
+          );
+          return;
+        } else if (json.code === "CONCURRENT_TRANSACTION") {
+          toast.error(
+            <div className="flex flex-col gap-1 w-full">
+              <span className="font-bold text-base">Another sale is currently being processed for this customer.</span>
+              <span className="text-sm">Please wait a few seconds and try again.</span>
+            </div>,
+            { duration: 6000 }
+          );
+          return;
+        } else if (json.code === "CUSTOMER_NOT_FOUND") {
+          toast.error("Customer no longer exists.");
+          return;
+        } else if (json.code === "CUSTOMER_INACTIVE") {
+          toast.error("Customer account is inactive and cannot be used for new sales.");
+          return;
+        }
+        throw new Error(json.error || "Failed to save");
+      }
       
       toast.success(isActuallyEditing ? "Invoice updated!" : "Invoice created successfully!");
       reset();

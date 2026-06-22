@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
         for (const inv of c.sales_invoices) {
           revenue += inv.total;
           const paid = inv.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
-          if (inv.payment_status !== 'PAID' && new Date() > new Date(inv.invoice_date.getTime() + 30 * 24 * 60 * 60 * 1000)) {
+          const creditDays = c.credit_days ?? 30;
+          if (inv.payment_status !== 'PAID' && new Date() > new Date(inv.invoice_date.getTime() + creditDays * 24 * 60 * 60 * 1000)) {
             latePayments++;
           }
           totalPayments += inv.payments.length;
@@ -68,11 +69,14 @@ export async function GET(req: NextRequest) {
         let score = 3;
         let volume = 0;
         let mortalities = 0;
-        
+        const processedBatches = new Set<string>();
         for (const ft of s.feed_types) {
           for (const fc of ft.consumptions) {
             volume += fc.quantity_kg;
-            if (fc.batch) mortalities += fc.batch.mortalities.reduce((acc: number, m: any) => acc + m.quantity, 0);
+            if (fc.batch && !processedBatches.has(fc.batch.id)) {
+              processedBatches.add(fc.batch.id);
+              mortalities += fc.batch.mortalities.reduce((acc: number, m: any) => acc + m.quantity, 0);
+            }
           }
         }
 
