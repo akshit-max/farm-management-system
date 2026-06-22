@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useState } from "react";
 
+import { customerPaymentRepository } from "@/lib/offline/repositories/customerPaymentRepository";
+
 const columnHelper = createColumnHelper<any>();
 
 export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRefresh: () => void; canMutate: boolean }) {
@@ -18,12 +20,11 @@ export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRe
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/customer-payments/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await customerPaymentRepository.delete(deleteId);
       toast.success("Payment deleted successfully");
       onRefresh();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to delete payment");
     } finally {
       setDeleteId(null);
     }

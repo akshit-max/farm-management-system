@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { customerPaymentRepository } from "@/lib/offline/repositories/customerPaymentRepository";
 
 const schema = z.object({
   invoice_id: z.string().min(1, "Invoice is required"),
@@ -48,25 +49,15 @@ export function PaymentForm({ customerId, invoices, onSuccess, onCancel }: { cus
 
   const onSubmit = async (data: any) => {
     try {
-      const res = await fetch(`/api/customer-payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, customer_id: customerId }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to record payment");
-      }
-
+      await customerPaymentRepository.create({ ...data, customer_id: customerId });
       toast.success(`Payment recorded successfully`);
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to record payment");
     }
   };
 
-  const pendingInvoices = invoices.filter(inv => inv.payment_status !== "PAID");
+  const pendingInvoices = invoices.filter(inv => inv.payment_status !== "PAID" && inv.payment_status !== "CANCELLED");
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">

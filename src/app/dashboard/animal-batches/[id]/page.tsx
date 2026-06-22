@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useRBAC } from "@/lib/rbac-client";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { mortalityRepository } from "@/lib/offline/repositories/mortalityRepository";
 
 const mortalitySchema = z.object({
   quantity: z.coerce.number().min(1, "Must be at least 1"),
@@ -31,6 +32,8 @@ export default function BatchDetailsPage() {
   const id = params?.id as string;
   const [batch, setBatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mortalityAdjustments, setMortalityAdjustments] = useState({ pending: 0, deleted: 0, updatedDelta: 0 });
+  const [offlineMortalityList, setOfflineMortalityList] = useState<any[]>([]);
   const { canMutate } = useRBAC();
 
   const mForm = useForm({
@@ -53,26 +56,32 @@ export default function BatchDetailsPage() {
     setLoading(false);
   };
 
+  const loadOfflineAdjustments = async () => {
+    if (!navigator.onLine && id) {
+      const adj = await mortalityRepository.getOfflineMortalityAdjustments(id);
+      setMortalityAdjustments(adj);
+      
+      const all = await mortalityRepository.getAll();
+      setOfflineMortalityList(all.filter((m: any) => m.isOffline && m.batch_id === id));
+    } else {
+      setMortalityAdjustments({ pending: 0, deleted: 0, updatedDelta: 0 });
+      setOfflineMortalityList([]);
+    }
+  };
+
   useEffect(() => {
     fetchBatch();
+    loadOfflineAdjustments();
   }, [id]);
 
   const onMortalitySubmit = async (data: any) => {
     try {
       const formattedDate = new Date(data.date).toISOString();
-      const res = await fetch("/api/mortalities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, date: formattedDate, batch_id: id }),
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        const errorMsg = typeof resData.error === 'string' ? resData.error : JSON.stringify(resData.error) || "Failed to record mortality";
-        throw new Error(errorMsg);
-      }
-      toast.success("Mortality recorded");
+      await mortalityRepository.create({ ...data, date: formattedDate, batch_id: id });
+      toast.success("Mortality recorded successfully");
       mForm.reset();
       fetchBatch();
+      loadOfflineAdjustments();
     } catch (err: any) {
       toast.error(err.message || "An unexpected error occurred");
     }
@@ -143,7 +152,19 @@ export default function BatchDetailsPage() {
             <div><p className="text-sm text-gray-500">Category</p><p className="font-semibold">{batch.animal_category?.name}</p></div>
             <div><p className="text-sm text-gray-500">Room</p><p className="font-semibold">{batch.room?.name}</p></div>
             <div><p className="text-sm text-gray-500">Stage</p><p className="font-semibold">{batch.current_stage?.stage_name}</p></div>
-            <div><p className="text-sm text-gray-500">Current Quantity</p><p className="font-semibold text-xl text-emerald-600">{batch.quantity}</p></div>
+            <div>
+              <p className="text-sm text-gray-500">Current Quantity</p>
+              {mortalityAdjustments.pending > 0 || mortalityAdjustments.deleted > 0 || mortalityAdjustments.updatedDelta !== 0 ? (
+                <div className="flex flex-col">
+                  <p className="font-semibold text-xl text-emerald-600">
+                    {batch.quantity - mortalityAdjustments.pending + mortalityAdjustments.deleted - mortalityAdjustments.updatedDelta}
+                  </p>
+                  <span className="text-[11px] text-gray-500 font-medium tracking-wider uppercase mt-1">Projected Offline</span>
+                </div>
+              ) : (
+                <p className="font-semibold text-xl text-emerald-600">{batch.quantity}</p>
+              )}
+            </div>
             <div><p className="text-sm text-gray-500">Arrival Date</p><p className="font-semibold">{format(new Date(batch.arrival_date), "PP")}</p></div>
             <div><p className="text-sm text-gray-500">Avg Weight</p><p className="font-semibold">{batch.average_weight} kg</p></div>
             <div><p className="text-sm text-gray-500">Cost per Animal</p><p className="font-semibold">₹{batch.cost_per_animal}</p></div>
@@ -192,13 +213,14 @@ export default function BatchDetailsPage() {
           <div className="bg-white p-6 rounded-xl border shadow-sm">
             <h3 className="font-medium mb-3">Mortality History</h3>
             <div className="space-y-3 max-h-64 overflow-y-auto">
-              {batch.mortalities?.map((m: any) => (
+              {[...offlineMortalityList, ...(batch.mortalities || [])].map((m: any) => (
                 <div key={m.id} className="text-sm border-b pb-2">
                   <span className="font-bold text-red-600">-{m.quantity}</span> on {format(new Date(m.date), "MMM d, yyyy")}
+                  {m.isOffline && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase">Pending Sync</span>}
                   <p className="text-gray-500">{m.cause || "No cause specified"}</p>
                 </div>
               ))}
-              {batch.mortalities?.length === 0 && <p className="text-sm text-gray-500">No mortality recorded.</p>}
+              {batch.mortalities?.length === 0 && offlineMortalityList.length === 0 && <p className="text-sm text-gray-500">No mortality recorded.</p>}
             </div>
           </div>
         </div>

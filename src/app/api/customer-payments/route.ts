@@ -14,7 +14,8 @@ const createPaymentSchema = z.object({
   amount: z.coerce.number().min(0.01, "Amount must be > 0"),
   payment_method: z.string().min(1, "Payment method is required"),
   reference_number: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  client_request_id: z.string().optional()
 });
 
 export async function POST(req: NextRequest) {
@@ -26,6 +27,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsedData = createPaymentSchema.parse(body);
+
+    if (parsedData.client_request_id) {
+      const existingRequest = await db.customerPayment.findFirst({
+        where: { farm_id: farmId, client_request_id: parsedData.client_request_id }
+      });
+      if (existingRequest) {
+        return NextResponse.json(existingRequest, { status: 200 });
+      }
+    }
 
     await checkFinancialLock(farmId, parsedData.payment_date);
 
@@ -70,7 +80,8 @@ export async function POST(req: NextRequest) {
           amount: parsedData.amount,
           payment_method: parsedData.payment_method,
           reference_number: parsedData.reference_number,
-          notes: parsedData.notes
+          notes: parsedData.notes,
+          client_request_id: parsedData.client_request_id
         }
       });
 

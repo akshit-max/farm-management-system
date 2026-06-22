@@ -9,12 +9,38 @@ import { toast } from "sonner";
 import { useRBAC } from "@/lib/rbac-client";
 import { format } from "date-fns";
 
+import { customerPaymentRepository } from "@/lib/offline/repositories/customerPaymentRepository";
+import { salesRepository } from "@/lib/offline/repositories/salesRepository";
+
 export default function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { canManageCustomers } = useRBAC();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
+  const [offlineSnapshot, setOfflineSnapshot] = useState<{ estimated: number } | null>(null);
+  const [offlinePayments, setOfflinePayments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (data && !navigator.onLine) {
+      Promise.all([
+        salesRepository.getPendingCustomerReceivables(id),
+        customerPaymentRepository.getPendingCustomerPayments(id)
+      ]).then(([pendingSalesReceivables, pendingPaymentsSum]) => {
+        const estimated = data.metrics.outstanding_balance + pendingSalesReceivables - pendingPaymentsSum;
+        setOfflineSnapshot({ estimated: Math.max(0, estimated) });
+      });
+
+      // Get full list of offline payments
+      customerPaymentRepository.getAll().then(all => {
+        const pending = all.filter(p => p.isOffline && p.customer_id === id);
+        setOfflinePayments(pending);
+      });
+    } else {
+      setOfflineSnapshot(null);
+      setOfflinePayments([]);
+    }
+  }, [data, id, isRecording]);
 
   const fetchLedger = async () => {
     try {
@@ -74,7 +100,14 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
             <div className="p-2 bg-rose-50 text-rose-600 rounded-lg"><IndianRupee className="w-5 h-5" /></div>
             <h3 className="text-sm font-medium text-gray-600">Outstanding</h3>
           </div>
-          <p className="text-2xl font-bold text-status-danger">₹{metrics.outstanding_balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+          {offlineSnapshot ? (
+             <div className="flex flex-col">
+               <p className="text-2xl font-bold text-status-danger">₹{offlineSnapshot.estimated.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+               <span className="text-[11px] text-gray-500 font-medium tracking-wider uppercase mt-1">Estimated Offline</span>
+             </div>
+          ) : (
+             <p className="text-2xl font-bold text-status-danger">₹{metrics.outstanding_balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+          )}
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
@@ -97,7 +130,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">Payment History</h2>
-          <PaymentTable data={customer.payments} onRefresh={fetchLedger} canMutate={canManageCustomers} />
+          <PaymentTable data={[...offlinePayments, ...customer.payments]} onRefresh={fetchLedger} canMutate={canManageCustomers} />
         </div>
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Invoices</h2>

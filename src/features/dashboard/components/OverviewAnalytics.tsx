@@ -1,9 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 export function OverviewAnalytics({ categories = [], mortalities = [], vaccinations = [] }: { categories?: any[], mortalities?: any[], vaccinations?: any[] }) {
+  const [offlineMortalities, setOfflineMortalities] = useState<any[]>([]);
+
+  useEffect(() => {
+    import("@/lib/offline/repositories/mortalityRepository").then(mod => {
+      mod.mortalityRepository.getAll().then(all => {
+        setOfflineMortalities(all.filter((m: any) => m.isOffline));
+      });
+    });
+  }, []);
+
+  const combinedMortalities = useMemo(() => {
+    return [...offlineMortalities, ...mortalities];
+  }, [offlineMortalities, mortalities]);
+
   // 1. Animal Distribution (Pie Chart)
   const distributionData = useMemo(() => {
     return categories.map(cat => ({
@@ -25,7 +39,7 @@ export function OverviewAnalytics({ categories = [], mortalities = [], vaccinati
     const counts: Record<string, number> = {};
     last7Days.forEach(d => counts[d] = 0);
 
-    mortalities.forEach(m => {
+    combinedMortalities.forEach(m => {
       const dateStr = new Date(m.date).toISOString().split('T')[0];
       if (counts[dateStr] !== undefined) {
         counts[dateStr] += m.quantity;

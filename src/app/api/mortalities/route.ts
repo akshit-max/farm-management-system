@@ -11,6 +11,7 @@ const createMortalitySchema = z.object({
   cause: z.string().min(1, "Cause is required"),
   date: z.string().datetime(),
   notes: z.string().optional(),
+  client_request_id: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsedData = createMortalitySchema.parse(body);
+
+    if (parsedData.client_request_id) {
+      const existing = await db.mortality.findFirst({
+        where: { client_request_id: parsedData.client_request_id }
+      });
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 });
+      }
+    }
 
     const batch = await db.animalBatch.findUnique({
       where: { id: parsedData.batch_id },
@@ -43,6 +53,7 @@ export async function POST(req: NextRequest) {
           cause: parsedData.cause,
           date: new Date(parsedData.date),
           notes: parsedData.notes,
+          client_request_id: parsedData.client_request_id,
         },
       }),
       db.animalBatch.update({
