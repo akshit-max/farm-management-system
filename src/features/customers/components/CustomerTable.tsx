@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, getPaginationRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Trash2, Search, Edit, Phone, Mail, BookOpen, CloudOff } from "lucide-react";
+import { Trash2, Search, Edit, Phone, Mail, BookOpen, CloudOff, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { ConfirmModal } from "@/features/shared/components/ConfirmModal";
 import { useRBAC } from "@/lib/rbac-client";
@@ -20,7 +20,33 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
   const [globalFilter, setGlobalFilter] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [syncErrors, setSyncErrors] = useState<Record<string, string>>({});
   const { canManageCustomers } = useRBAC();
+
+  const handleRetry = async (customer: any) => {
+    toast.info("Retrying sync...");
+    try {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...customer, client_request_id: customer.id })
+      });
+      if (res.ok) {
+        const { db } = await import("@/lib/offline/db");
+        if (db) {
+          await db.offline_customers.update(customer.id, { sync_status: 'SYNCED' });
+        }
+        toast.success("Sync successful!");
+        fetchCustomers();
+      } else {
+        const err = await res.json();
+        setSyncErrors(prev => ({ ...prev, [customer.id]: err.error || "Validation failed" }));
+        toast.error(err.error || "Sync failed");
+      }
+    } catch (err: any) {
+      toast.error("Network error");
+    }
+  };
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -59,9 +85,26 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
         <div>
           <div className="font-semibold text-gray-900 flex items-center gap-2">
             {info.getValue()}
-            {info.row.original.isOffline && (
+            {info.row.original.isOffline && info.row.original.sync_status === 'PENDING' && (
               <span className="flex items-center text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium" title="Pending Sync">
                 <CloudOff className="w-3 h-3 mr-1" /> Pending
+              </span>
+            )}
+            {info.row.original.isOffline && info.row.original.sync_status === 'FAILED' && (
+              <div className="flex flex-col mt-1">
+                <span className="flex items-center text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full font-medium w-fit" title="Sync Failed">
+                  <CloudOff className="w-3 h-3 mr-1" /> Failed
+                </span>
+                {syncErrors[info.row.original.id] && (
+                  <span className="text-[10px] text-red-600 mt-0.5 max-w-[200px] truncate" title={syncErrors[info.row.original.id]}>
+                    Failed: {syncErrors[info.row.original.id]}
+                  </span>
+                )}
+              </div>
+            )}
+            {info.row.original.isOffline && info.row.original.sync_status === 'SYNCED' && (
+              <span className="flex items-center text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-medium" title="Synced Successfully">
+                <CloudOff className="w-3 h-3 mr-1" /> Synced
               </span>
             )}
           </div>
@@ -100,6 +143,11 @@ export function CustomerTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?:
       header: "Actions",
       cell: (info) => (
         <div className="flex items-center gap-2">
+          {info.row.original.isOffline && info.row.original.sync_status === 'FAILED' && (
+            <button onClick={() => handleRetry(info.row.original)} className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors" title="Retry Sync">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          )}
           <Link href={`/dashboard/customers/${info.row.original.id}`} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="View Ledger">
             <BookOpen className="w-4 h-4" />
           </Link>
