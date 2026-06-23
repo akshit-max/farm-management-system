@@ -34,7 +34,7 @@ export function PaymentTable({ data, onRefresh, canMutate }: { data: any[]; onRe
     const baseColumns: any[] = [
       columnHelper.accessor("payment_date", {
         header: "Date",
-        cell: (info) => <span className="text-gray-900">{format(new Date(info.getValue()), "PP")}</span>
+        cell: (info) => { const d = info.getValue(); return <span className="text-gray-900">{d ? format(new Date(d), "PP") : "-"}</span>; }
       }),
       columnHelper.accessor("amount", {
         header: "Amount",

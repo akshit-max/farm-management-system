@@ -67,7 +67,7 @@ export function SalesTable({ keyIndex, onEdit, showCancelled }: { keyIndex: numb
     }),
     columnHelper.accessor("invoice_date", {
       header: "Date",
-      cell: (info) => format(new Date(info.getValue()), "MMM d, yyyy")
+      cell: (info) => { const d = info.getValue(); return d ? format(new Date(d), "MMM d, yyyy") : "-"; }
     }),
     columnHelper.accessor("customer", {
       header: "Customer",

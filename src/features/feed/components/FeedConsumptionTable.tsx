@@ -54,7 +54,7 @@ export function FeedConsumptionTable({ keyIndex }: { keyIndex: number }) {
       cell: (info) => (
         <div className="flex items-center text-gray-900 font-medium">
           <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-          {format(new Date(info.getValue()), 'MMM d, yyyy')}
+          {info.getValue() ? format(new Date(info.getValue()), 'MMM d, yyyy') : "-"}
           {info.row.original.isOffline && <span className="ml-2 px-1.5 py-0.5 text-[10px] uppercase bg-yellow-100 text-yellow-800 rounded">Pending Sync</span>}
         </div>
       )

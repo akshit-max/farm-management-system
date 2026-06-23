@@ -172,7 +172,7 @@ export default function BatchDetailsPage() {
                 <p className="font-semibold text-xl text-emerald-600">{batch.quantity}</p>
               )}
             </div>
-            <div><p className="text-sm text-gray-500">Arrival Date</p><p className="font-semibold">{format(new Date(batch.arrival_date), "PP")}</p></div>
+            <div><p className="text-sm text-gray-500">Arrival Date</p><p className="font-semibold">{batch.arrival_date ? format(new Date(batch.arrival_date), "PP") : "-"}</p></div>
             <div><p className="text-sm text-gray-500">Avg Weight</p><p className="font-semibold">{batch.average_weight} kg</p></div>
             <div><p className="text-sm text-gray-500">Cost per Animal</p><p className="font-semibold">₹{batch.cost_per_animal}</p></div>
             <div><p className="text-sm text-gray-500">Status</p><span className="inline-flex px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">{batch.status}</span></div>
@@ -222,7 +222,7 @@ export default function BatchDetailsPage() {
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {[...offlineMortalityList, ...(batch.mortalities || [])].map((m: any) => (
                 <div key={m.id} className="text-sm border-b pb-2">
-                  <span className="font-bold text-red-600">-{m.quantity}</span> on {format(new Date(m.date), "MMM d, yyyy")}
+                  <span className="font-bold text-red-600">-{m.quantity}</span> on {m.date ? format(new Date(m.date), "MMM d, yyyy") : "-"}
                   {m.isOffline && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase">Pending Sync</span>}
                   <p className="text-gray-500">{m.cause || "No cause specified"}</p>
                 </div>
@@ -276,7 +276,7 @@ export default function BatchDetailsPage() {
                   {batch.vaccinations?.map((v: any) => (
                     <tr key={v.id}>
                       <td className="py-2">{v.vaccine_name}</td>
-                      <td>{format(new Date(v.due_date), "MMM d, yyyy")}</td>
+                      <td>{v.due_date ? format(new Date(v.due_date), "MMM d, yyyy") : "-"}</td>
                       <td>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           v.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'

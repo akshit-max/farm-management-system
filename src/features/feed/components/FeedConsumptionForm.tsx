@@ -130,7 +130,7 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Animal Batch <span className="text-red-500">*</span></label>
           <select {...register("batch_id")} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500">
             <option value="">Select Batch...</option>
-            {batches.map(b => <option key={b.id} value={b.id}>{b.batch_number} - {b.animal_category.name}</option>)}
+            {batches.map(b => <option key={b.id} value={b.id}>{b.batch_number} - {b.animal_category?.name || 'Unknown Category'}</option>)}
           </select>
           {errors.batch_id && <p className="text-red-500 text-xs mt-1">{errors.batch_id.message as string}</p>}
         </div>

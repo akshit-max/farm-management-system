@@ -8,7 +8,7 @@ export const customerPaymentRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch("/api/customer-payments");
+        const res = await fetch("/api/customer-payments", { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];

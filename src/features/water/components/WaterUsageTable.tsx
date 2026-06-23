@@ -36,7 +36,7 @@ export function WaterUsageTable({ data, onEdit, onRefresh, canMutate }: { data: 
         header: "Date",
         cell: (info) => (
           <div className="flex items-center">
-            {format(new Date(info.getValue()), "PP")}
+            {info.getValue() ? format(new Date(info.getValue()), "PP") : "-"}
             {info.row.original.isOffline && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase font-medium">Pending Sync</span>}
           </div>
         )

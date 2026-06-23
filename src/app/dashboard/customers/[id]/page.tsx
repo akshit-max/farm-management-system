@@ -164,18 +164,18 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">Payment History</h2>
-          <PaymentTable data={[...offlinePayments, ...customer.payments]} onRefresh={fetchLedger} canMutate={canManageCustomers} />
+          <PaymentTable data={data.payments || []} onRefresh={fetchLedger} canMutate={canManageCustomers} />
         </div>
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Invoices</h2>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {customer.sales_invoices.length > 0 ? (
+            {data.invoices && data.invoices.length > 0 ? (
               <div className="divide-y divide-gray-100">
-                {customer.sales_invoices.map((inv: any) => (
+                {data.invoices.map((inv: any) => (
                   <div key={inv.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
                     <div>
                       <p className="font-medium text-gray-900">{inv.invoice_number}</p>
-                      <p className="text-sm text-gray-500">{format(new Date(inv.invoice_date), "PP")}</p>
+                      <p className="text-sm text-gray-500">{inv.invoice_date ? format(new Date(inv.invoice_date), "PP") : "-"}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-gray-900">₹{inv.total.toLocaleString()}</p>

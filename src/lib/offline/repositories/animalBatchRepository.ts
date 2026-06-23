@@ -58,7 +58,7 @@ export const animalBatchRepository = {
 
     if (db) {
       const offlineBatch = await db.offline_animal_batches.get(id);
-      if (offlineBatch) {
+      if (offlineBatch && (offlineBatch.sync_status === 'PENDING' || offlineBatch.sync_status === 'FAILED')) {
         const payload = { ...offlineBatch.payload, id: offlineBatch.local_id, isOffline: true, sync_status: offlineBatch.sync_status };
         const [categories, rooms, stages] = await Promise.all([
           animalCategoryRepository.getAll(),

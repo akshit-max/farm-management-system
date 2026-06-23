@@ -51,7 +51,7 @@ export const salesRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch(`/api/sales?showCancelled=${showCancelled}`);
+        const res = await fetch(`/api/sales?showCancelled=${showCancelled}`, { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];

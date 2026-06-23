@@ -34,7 +34,7 @@ export function ExpenseTable({ data, onEdit, onRefresh, canMutate }: { data: any
     const baseColumns: any[] = [
       columnHelper.accessor("expense_date", {
         header: "Date",
-        cell: (info) => <span className="text-gray-900">{format(new Date(info.getValue()), "PP")}</span>
+        cell: (info) => <span className="text-gray-900">{info.getValue() ? format(new Date(info.getValue()), "PP") : "-"}</span>
       }),
       columnHelper.accessor("category", {
         header: "Category",

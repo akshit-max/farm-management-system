@@ -34,7 +34,7 @@ export function SlaughterTable({ data, onRefresh, canMutate }: { data: any[]; on
     const baseColumns: any[] = [
       columnHelper.accessor("slaughter_date", {
         header: "Date",
-        cell: (info) => format(new Date(info.getValue()), "PP"),
+        cell: (info) => info.getValue() ? format(new Date(info.getValue()), "PP") : "-",
       }),
       columnHelper.accessor("batch.batch_number", {
         header: "Batch",

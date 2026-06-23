@@ -50,7 +50,7 @@ export function InventoryTable({ data, onEdit, onRefresh, canMutate }: { data: a
       }),
       columnHelper.accessor("updated_at", {
         header: "Last Updated",
-        cell: (info) => <span className="text-gray-500 text-sm">{format(new Date(info.getValue()), "PP")}</span>
+        cell: (info) => <span className="text-gray-500 text-sm">{info.getValue() ? format(new Date(info.getValue()), "PP") : "-"}</span>
       }),
     ];
 

@@ -344,8 +344,8 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Customer:</span> <span className="font-medium text-gray-900">{invoiceData.customer?.company_name}</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Status:</span> <span className="font-bold">{invoiceData.status} ({invoiceData.payment_status})</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Created:</span> <span className="font-medium text-gray-900">{format(new Date(invoiceData.created_at), "MMM d, yyyy")}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Last Updated:</span> <span className="font-medium text-gray-900">{format(new Date(invoiceData.last_modified), "MMM d, yyyy HH:mm")}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Created:</span> <span className="font-medium text-gray-900">{invoiceData.created_at ? format(new Date(invoiceData.created_at), "MMM d, yyyy") : "-"}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Last Updated:</span> <span className="font-medium text-gray-900">{invoiceData.last_modified ? format(new Date(invoiceData.last_modified), "MMM d, yyyy HH:mm") : "-"}</span></div>
             </div>
           </div>
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -508,7 +508,7 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
               <tbody className="divide-y divide-gray-200 bg-white">
                 {invoiceData.payments.map((p: any) => (
                   <tr key={p.id}>
-                    <td className="px-4 py-2">{format(new Date(p.payment_date), "MMM d, yyyy")}</td>
+                    <td className="px-4 py-2">{p.payment_date ? format(new Date(p.payment_date), "MMM d, yyyy") : "-"}</td>
                     <td className="px-4 py-2">{p.payment_method}</td>
                     <td className="px-4 py-2">{p.reference_number || "-"}</td>
                     <td className="px-4 py-2 text-right font-medium text-emerald-600">₹{p.amount.toFixed(2)}</td>
