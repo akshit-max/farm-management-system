@@ -1,32 +1,25 @@
-import { PrismaClient } from '@prisma/client';
-const db = new PrismaClient();
+import { db } from "./src/lib/db";
 
-async function run() {
+async function test() {
   try {
-    const farms = await db.farm.findMany({ take: 1 });
-    if (!farms.length) return console.log("No farms");
+    const payload = {
+      farm_id: "d9b82079-3261-4c83-b30f-321903ceb57d",
+      name: "Test Feed Type " + Date.now(),
+      supplier_id: null,
+      cost_per_kg: 10,
+      stock_quantity: 100,
+      reorder_level: 10,
+      notes: "Testing"
+    };
     
-    // 1. Try to create feed type with supplier_id = ""
-    try {
-      await db.feedType.create({
-        data: {
-          farm_id: farms[0].id,
-          name: "Test Feed Type Empty Supplier",
-          supplier_id: "" as any,
-          cost_per_kg: 10,
-          stock_quantity: 100,
-          reorder_level: 10
-        }
-      });
-      console.log("SUCCESS creating with empty supplier string");
-    } catch (e: any) {
-      console.log("FAILED empty string:", e.message.substring(0, 100));
-    }
-
+    console.log("Creating feed type...");
+    const res = await db.feedType.create({
+      data: payload
+    });
+    console.log("Success:", res);
   } catch (err: any) {
-    console.error(err);
-  } finally {
-    await db.$disconnect();
+    console.error("Prisma Error:", err.message);
   }
 }
-run();
+
+test();
