@@ -2,33 +2,16 @@
 
 import { createColumnHelper, flexRender, getCoreRowModel, getPaginationRowModel, useReactTable, getFilteredRowModel } from "@tanstack/react-table";
 import { useState, useMemo } from "react";
-import { Trash2, Search, Crosshair } from "lucide-react";
+import { Lock, Search, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { toast } from "sonner";
 import { format } from "date-fns";
 
 const columnHelper = createColumnHelper<any>();
 
 export function SlaughterTable({ data, onRefresh, canMutate }: { data: any[]; onRefresh: () => void; canMutate: boolean }) {
   const [globalFilter, setGlobalFilter] = useState("");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    try {
-      const res = await fetch(`/api/slaughter-records/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      toast.success("Record deleted successfully");
-      onRefresh();
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setDeleteId(null);
-    }
-  };
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -71,10 +54,14 @@ export function SlaughterTable({ data, onRefresh, canMutate }: { data: any[]; on
         columnHelper.display({
           id: "actions",
           header: "Actions",
-          cell: (info) => (
+          cell: () => (
             <div className="flex items-center gap-2">
-              <button onClick={() => setDeleteId(info.row.original.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
-                <Trash2 className="w-4 h-4" />
+              <button 
+                disabled 
+                className="p-1.5 text-gray-400 cursor-not-allowed rounded-md" 
+                title="Slaughter records are locked after processing because they affect inventory stock, yield tracking, waste records, and animal batch quantities. Create an adjustment entry if corrections are required."
+              >
+                <Lock className="w-4 h-4" />
               </button>
             </div>
           )
@@ -159,14 +146,6 @@ export function SlaughterTable({ data, onRefresh, canMutate }: { data: any[]; on
           </div>
         </div>
       )}
-
-      <ConfirmModal 
-        isOpen={!!deleteId}
-        title="Delete Slaughter Record"
-        message="Are you sure you want to delete this slaughter record? Related yield and inventory will not be deleted automatically to prevent stock mismatch. Proceed with caution."
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteId(null)}
-      />
     </div>
   );
 }
