@@ -59,15 +59,16 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
   const { fields, append, remove } = useFieldArray({ control, name: "inventory_items" });
 
   useEffect(() => {
-    fetch("/api/animal-batches")
-      .then(res => res.json())
-      .then(data => setBatches(data.data || []))
-      .catch(() => toast.error("Failed to load batches"));
+    import("@/lib/offline/repositories/animalBatchRepository").then(({ animalBatchRepository }) => {
+      animalBatchRepository.getAll().then(data => setBatches(data || []));
+    });
 
-    fetch("/api/inventory-items")
-      .then(res => res.json())
-      .then(data => setExistingItems(data.data || []))
-      .catch(() => console.error("Failed to load inventory items"));
+    if (navigator.onLine) {
+      fetch("/api/inventory-items")
+        .then(res => res.json())
+        .then(data => setExistingItems(data.data || []))
+        .catch(() => console.error("Failed to load inventory items"));
+    }
   }, []);
 
   const onSubmit = async (data: any) => {

@@ -39,9 +39,15 @@ export function BatchForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   const enteredQuantity = watch("quantity");
 
   useEffect(() => {
-    fetch(`/api/animal-categories`).then(r => r.json()).then(d => setCategories(d.data || []));
-    fetch(`/api/rooms`).then(r => r.json()).then(d => setRooms(d.data || []));
-    fetch(`/api/stages`).then(r => r.json()).then(d => setStages(d.data || []));
+    import("@/lib/offline/repositories/animalCategoryRepository").then(({ animalCategoryRepository }) => {
+      animalCategoryRepository.getAll().then(data => setCategories(data || []));
+    });
+    import("@/lib/offline/repositories/roomRepository").then(({ roomRepository }) => {
+      roomRepository.getAll().then(data => setRooms(data || []));
+    });
+    import("@/lib/offline/repositories/stageRepository").then(({ stageRepository }) => {
+      stageRepository.getAll().then(data => setStages(data || []));
+    });
   }, []);
 
   useEffect(() => {
@@ -103,16 +109,14 @@ export function BatchForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
     }
     setIsLoading(true);
     try {
-      const url = initialData ? `/api/animal-batches/${initialData.id}` : "/api/animal-batches";
-      const method = initialData ? "PUT" : "POST";
+      const { animalBatchRepository } = await import("@/lib/offline/repositories/animalBatchRepository");
       const payload = { ...data, arrival_date: new Date(data.arrival_date).toISOString() };
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
+      
+      if (initialData) {
+        await animalBatchRepository.update(initialData.id, payload);
+      } else {
+        await animalBatchRepository.create(payload);
+      }
       toast.success(initialData ? "Batch updated!" : "Batch created!");
       reset();
       onSuccess();

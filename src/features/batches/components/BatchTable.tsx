@@ -23,11 +23,9 @@ export function BatchTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?: (b
 
   const fetchBatches = async () => {
     setLoading(true);
-    const res = await fetch(`/api/animal-batches`);
-    if (res.ok) {
-      const json = await res.json();
-      setData(json.data);
-    }
+    const { animalBatchRepository } = await import("@/lib/offline/repositories/animalBatchRepository");
+    const batches = await animalBatchRepository.getAll();
+    setData(batches || []);
     setLoading(false);
   };
 
@@ -38,11 +36,12 @@ export function BatchTable({ keyIndex, onEdit }: { keyIndex: number; onEdit?: (b
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const res = await fetch(`/api/animal-batches/${deleteId}`, { method: "DELETE" });
-    if (res.ok) {
+    try {
+      const { animalBatchRepository } = await import("@/lib/offline/repositories/animalBatchRepository");
+      await animalBatchRepository.delete(deleteId);
       toast.success("Deleted successfully");
       fetchBatches();
-    } else {
+    } catch (e) {
       toast.error("Failed to delete");
     }
     setIsDeleting(false);

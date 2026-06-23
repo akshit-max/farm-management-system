@@ -11,6 +11,7 @@ import { format } from "date-fns";
 
 import { customerPaymentRepository } from "@/lib/offline/repositories/customerPaymentRepository";
 import { salesRepository } from "@/lib/offline/repositories/salesRepository";
+import { customerRepository } from "@/lib/offline/repositories/customerRepository";
 
 export default function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -21,34 +22,68 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
   const [offlineSnapshot, setOfflineSnapshot] = useState<{ estimated: number } | null>(null);
   const [offlinePayments, setOfflinePayments] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (data && !navigator.onLine) {
-      Promise.all([
-        salesRepository.getPendingCustomerReceivables(id),
-        customerPaymentRepository.getPendingCustomerPayments(id)
-      ]).then(([pendingSalesReceivables, pendingPaymentsSum]) => {
-        const estimated = data.metrics.outstanding_balance + pendingSalesReceivables - pendingPaymentsSum;
-        setOfflineSnapshot({ estimated: Math.max(0, estimated) });
-      });
-
-      // Get full list of offline payments
-      customerPaymentRepository.getAll().then(all => {
-        const pending = all.filter(p => p.isOffline && p.customer_id === id);
-        setOfflinePayments(pending);
-      });
-    } else {
-      setOfflineSnapshot(null);
-      setOfflinePayments([]);
-    }
-  }, [data, id, isRecording]);
-
   const fetchLedger = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/customers/${id}/ledger`);
-      if (!res.ok) throw new Error("Failed to fetch ledger");
-      const json = await res.json();
-      setData(json.data);
+      let serverData = null;
+      if (navigator.onLine) {
+        try {
+          const res = await fetch(`/api/customers/${id}/ledger`);
+          if (res.ok) {
+            const json = await res.json();
+            serverData = json.data;
+          }
+        } catch (e) {
+          console.warn("Online ledger fetch failed", e);
+        }
+      }
+
+      const allCustomers = await customerRepository.getAll();
+      const localCustomer = allCustomers.find(c => c.id === id);
+
+      if (!serverData && !localCustomer) {
+        setData(null);
+        return;
+      }
+
+      const allSales = await salesRepository.getAll();
+      const localSales = allSales.filter(s => s.customer_id === id);
+
+      const allPayments = await customerPaymentRepository.getAll();
+      const localPayments = allPayments.filter(p => p.customer_id === id);
+
+      const customer = serverData ? serverData.customer : localCustomer;
+      
+      const mergedInvoices = serverData ? [...serverData.invoices] : [];
+      localSales.forEach(ls => {
+        if (!mergedInvoices.find(si => si.id === ls.id)) {
+          mergedInvoices.push({ ...ls, payments: localPayments.filter(lp => lp.invoice_id === ls.id) });
+        }
+      });
+      
+      const mergedPayments = serverData ? [...serverData.payments] : [];
+      localPayments.forEach(lp => {
+        if (!mergedPayments.find(sp => sp.id === lp.id)) {
+          mergedPayments.push(lp);
+        }
+      });
+      
+      const invoice_count = mergedInvoices.length;
+      const total_sales = mergedInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+      const total_payments = mergedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const outstanding_balance = total_sales - total_payments;
+      
+      setData({
+        customer,
+        invoices: mergedInvoices.sort((a,b) => new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime()),
+        payments: mergedPayments.sort((a,b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()),
+        metrics: {
+          invoice_count,
+          total_sales,
+          total_payments,
+          outstanding_balance: Math.max(0, outstanding_balance)
+        }
+      });
     } catch (error) {
       toast.error("Failed to load customer ledger");
     } finally {
@@ -58,7 +93,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
 
   useEffect(() => {
     fetchLedger();
-  }, [id]);
+  }, [id, isRecording]);
 
   if (isLoading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div>;
   if (!data) return <div className="p-6">Customer not found.</div>;

@@ -36,6 +36,30 @@ export const animalBatchRepository = {
     return merged.filter(b => !b.deleted_at);
   },
 
+  getById: async (id: string) => {
+    if (typeof window === 'undefined') return null;
+
+    if (db) {
+      const offlineBatch = await db.offline_animal_batches.get(id);
+      if (offlineBatch) {
+        return { ...offlineBatch.payload, id: offlineBatch.local_id, isOffline: true, sync_status: offlineBatch.sync_status };
+      }
+    }
+
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`/api/animal-batches/${id}`);
+        if (res.ok) {
+          const json = await res.json();
+          return json.data || null;
+        }
+      } catch (err) {
+        console.warn('Online fetch failed', err);
+      }
+    }
+    return null;
+  },
+
   create: async (data: any) => {
     if (typeof window === 'undefined') throw new Error("Cannot create offline from server");
 
@@ -84,6 +108,135 @@ export const animalBatchRepository = {
 
       const result = await res.json();
       return { success: true, offline: false, data: result };
+    } catch (err: any) {
+      if (err.message === "Failed to fetch" || (err.message && err.message.includes("NetworkError")) || err.name === "TypeError") {
+        return saveOffline();
+      }
+      throw err;
+    }
+  },
+
+  update: async (id: string, data: any) => {
+    let isLocal = false;
+    if (db) {
+      const localRecord = await db.offline_animal_batches.get(id);
+      if (localRecord) isLocal = true;
+    }
+
+    const saveOffline = async () => {
+      if (!db) return { success: false };
+      const payload = { ...data, id };
+      
+      if (isLocal) {
+        await db.offline_animal_batches.update(id, {
+          payload,
+          updated_at: new Date(),
+          sync_status: 'PENDING'
+        });
+      } else {
+        await db.offline_animal_batches.add({
+          local_id: id,
+          payload,
+          created_at: new Date(),
+          updated_at: new Date(),
+          sync_status: 'PENDING'
+        });
+      }
+
+      const queueTask = await db.sync_queue.where('entity').equals('ANIMAL_BATCH').and((t: any) => t.payload?.id === id && t.action === 'CREATE').first();
+      if (!queueTask) {
+        await db.sync_queue.add({
+          id: uuidv4(),
+          entity: 'ANIMAL_BATCH',
+          action: 'UPDATE',
+          payload,
+          status: 'PENDING',
+          created_at: new Date()
+        });
+      } else {
+        await db.sync_queue.update(queueTask.id, { payload, status: 'PENDING' });
+      }
+      return { success: true, offline: true };
+    };
+
+    if (!navigator.onLine) {
+      return saveOffline();
+    }
+
+    try {
+      const res = await fetch(`/api/animal-batches/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        let errJson;
+        try { errJson = await res.json(); } catch(e) {}
+        if (errJson) throw errJson;
+        throw new Error("Failed to update batch");
+      }
+
+      return { success: true, offline: false };
+    } catch (err: any) {
+      if (err.message === "Failed to fetch" || (err.message && err.message.includes("NetworkError")) || err.name === "TypeError") {
+        return saveOffline();
+      }
+      throw err;
+    }
+  },
+
+  delete: async (id: string) => {
+    let isLocal = false;
+    if (db) {
+      const localRecord = await db.offline_animal_batches.get(id);
+      if (localRecord) isLocal = true;
+    }
+
+    const saveOffline = async () => {
+      if (!db) return { success: false };
+      
+      if (isLocal) {
+        await db.offline_animal_batches.delete(id);
+      }
+
+      const queueTask = await db.sync_queue.where('entity').equals('ANIMAL_BATCH').and((t: any) => t.payload?.id === id && t.action === 'CREATE').first();
+      if (queueTask) {
+        await db.sync_queue.delete(queueTask.id);
+      } else {
+        await db.sync_queue.add({
+          id: uuidv4(),
+          entity: 'ANIMAL_BATCH',
+          action: 'DELETE',
+          payload: { id },
+          status: 'PENDING',
+          created_at: new Date()
+        });
+      }
+      return { success: true, offline: true };
+    };
+
+    if (!navigator.onLine) {
+      return saveOffline();
+    }
+
+    try {
+      const res = await fetch(`/api/animal-batches/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) {
+        let errJson;
+        try { errJson = await res.json(); } catch(e) {}
+        if (errJson) throw errJson;
+        throw new Error("Failed to delete batch");
+      }
+
+      if (isLocal && db) {
+        await db.offline_animal_batches.delete(id);
+      }
+
+      return { success: true, offline: false };
     } catch (err: any) {
       if (err.message === "Failed to fetch" || (err.message && err.message.includes("NetworkError")) || err.name === "TypeError") {
         return saveOffline();

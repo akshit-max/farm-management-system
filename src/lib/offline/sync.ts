@@ -442,3 +442,28 @@ export const processSyncQueue = async () => {
     console.error('Error processing sync queue:', err);
   }
 };
+
+export const recoverFailedSyncTasks = async () => {
+  if (typeof window === 'undefined' || !db) return;
+  try {
+    const failedTasks = await db.sync_queue.where('status').equals('FAILED').toArray();
+    for (const task of failedTasks) {
+      await db.sync_queue.update(task.id, { status: 'PENDING' });
+      // We do not need to update offline tables since sync pulls from sync_queue
+      // However, updating offline tables back to PENDING is good for UI consistency
+      if (task.payload && task.payload.id && task.action === 'CREATE') {
+        const tableMap: any = {
+          'SALES': 'offline_sales',
+          'CUSTOMER_PAYMENT': 'offline_customer_payments',
+          'CUSTOMER': 'offline_customers'
+        };
+        const table = tableMap[task.entity];
+        if (table && db[table as keyof typeof db]) {
+          await (db[table as keyof typeof db] as any).update(task.payload.id, { sync_status: 'PENDING' });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error recovering failed sync tasks:', err);
+  }
+};

@@ -37,12 +37,11 @@ export function WaterUsageForm({ onSuccess, initialData, onCancel }: { onSuccess
   const selectedRoomId = watch("room_id");
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/rooms').then(res => res.json()),
-      fetch('/api/animal-batches').then(res => res.json())
-    ]).then(([roomsData, batchesData]) => {
-      setRooms(roomsData.data || []);
-      setBatches(batchesData.data || []);
+    import("@/lib/offline/repositories/roomRepository").then(({ roomRepository }) => {
+      roomRepository.getAll().then(data => setRooms(data || []));
+    });
+    import("@/lib/offline/repositories/animalBatchRepository").then(({ animalBatchRepository }) => {
+      animalBatchRepository.getAll().then(data => setBatches(data || []));
     });
   }, []);
 

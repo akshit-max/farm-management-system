@@ -36,16 +36,20 @@ export function FeedConsumptionForm({ onSuccess }: { onSuccess: () => void }) {
 
   const loadData = async () => {
     try {
-      const [bRes, fRes] = await Promise.all([
-        fetch(`/api/animal-batches`),
-        fetch(`/api/feed-types`)
-      ]);
-      const [bData, fData] = await Promise.all([
-        bRes.json(),
-        fRes.json()
-      ]);
-      setBatches(bData.data || []);
-      const fList = fData.data || [];
+      const { animalBatchRepository } = await import("@/lib/offline/repositories/animalBatchRepository");
+      const bData = await animalBatchRepository.getAll();
+      setBatches(bData || []);
+
+      let fList = [];
+      if (navigator.onLine) {
+        try {
+          const fRes = await fetch(`/api/feed-types`);
+          if (fRes.ok) {
+            const fData = await fRes.json();
+            fList = fData.data || [];
+          }
+        } catch (e) { console.warn("Feed types fetch failed", e); }
+      }
       setFeedTypes(fList);
 
       const adjs: Record<string, number> = {};

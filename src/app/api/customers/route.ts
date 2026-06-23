@@ -15,7 +15,8 @@ const createCustomerSchema = z.object({
   customer_type: z.string().min(1, "Customer type is required"),
   notes: z.string().optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
-  client_request_id: z.string().optional()
+  client_request_id: z.string().optional(),
+  credit_limit: z.number().nullable().optional()
 });
 
 export async function GET(req: NextRequest) {
@@ -83,7 +84,12 @@ export async function POST(req: NextRequest) {
     }
 
     const customer = await db.customer.create({
-      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
+      data: { 
+        farm_id: farmId, 
+        credit_limit: parsedData.credit_limit !== undefined ? parsedData.credit_limit : null,
+        ...parsedData, 
+        sync_status: 'SYNCED' 
+      },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "Customer", customer.id);

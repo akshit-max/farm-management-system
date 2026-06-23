@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
 
-import { processSyncQueue } from "@/lib/offline/sync";
+import { processSyncQueue, recoverFailedSyncTasks } from "@/lib/offline/sync";
 
 export function DashboardShell({ children, userRole }: { children: React.ReactNode; userRole?: string }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -16,7 +16,9 @@ export function DashboardShell({ children, userRole }: { children: React.ReactNo
     
     window.addEventListener("online", handleOnline);
     if (navigator.onLine) {
-      processSyncQueue();
+      recoverFailedSyncTasks().then(() => {
+        processSyncQueue();
+      });
     }
     
     return () => window.removeEventListener("online", handleOnline);

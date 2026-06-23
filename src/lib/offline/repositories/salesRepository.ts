@@ -72,6 +72,30 @@ export const salesRepository = {
     // Sort combined array by created_at or invoice_date if needed, but returning as is is fine.
     return [...pendingOffline, ...onlineData];
   },
+
+  getById: async (id: string) => {
+    if (typeof window === 'undefined') return null;
+
+    if (db) {
+      const offlineSale = await db.offline_sales.get(id);
+      if (offlineSale) {
+        return { ...offlineSale.payload, id: offlineSale.local_id, isOffline: true, sync_status: offlineSale.sync_status };
+      }
+    }
+
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`/api/sales/${id}`);
+        if (res.ok) {
+          const json = await res.json();
+          return json.data || null;
+        }
+      } catch (err) {
+        console.warn('Online fetch failed', err);
+      }
+    }
+    return null;
+  },
   
   create: async (data: any) => {
     if (typeof window === 'undefined') throw new Error("Cannot create offline from server");

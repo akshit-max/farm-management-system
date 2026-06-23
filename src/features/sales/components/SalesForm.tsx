@@ -130,21 +130,19 @@ export function SalesForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
   useEffect(() => {
     if (initialData && mode === "edit") {
       setIsFetchingData(true);
-      fetch(`/api/sales/${initialData.id}`)
-        .then(res => res.json())
-        .then(json => {
-           if (json.data) {
-             setInvoiceData(json.data);
+      salesRepository.getById(initialData.id).then((invoice) => {
+           if (invoice) {
+             setInvoiceData(invoice);
              reset({
-                customer_id: json.data.customer_id,
-                invoice_date: new Date(json.data.invoice_date).toISOString().split('T')[0],
-                invoice_number: json.data.invoice_number,
-                notes: json.data.notes || "",
-                items: json.data.items.map((i: any) => ({
+                customer_id: invoice.customer_id,
+                invoice_date: new Date(invoice.invoice_date).toISOString().split('T')[0],
+                invoice_number: invoice.invoice_number,
+                notes: invoice.notes || "",
+                items: invoice.items ? invoice.items.map((i: any) => ({
                    batch_id: i.batch_id,
                    quantity: i.quantity,
-                   unit_price: i.rate
-                })),
+                   unit_price: i.rate || i.unit_price || 0
+                })) : [],
                 payment_received: false,
                 amount_paid: 0,
                 payment_method: "Cash",
