@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const feedType = await db.feedType.create({
-      data: { farm_id: farmId, ...parsedData },
+      data: { farm_id: farmId, ...parsedData, sync_status: 'SYNCED' },
     });
 
     await logAudit(session.user.id, farmId, "CREATE", "FeedType", feedType.id);

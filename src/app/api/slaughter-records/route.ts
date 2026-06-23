@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
           average_live_weight: parsedData.average_live_weight,
           total_live_weight: total_live_weight,
           notes: parsedData.notes,
+          sync_status: 'SYNCED'
         }
       });
 
@@ -114,7 +115,8 @@ export async function POST(req: NextRequest) {
           slaughter_record_id: slaughter.id,
           carcass_weight: parsedData.yield.carcass_weight,
           usable_meat_weight: parsedData.yield.usable_meat_weight,
-          yield_percentage: yield_percentage
+          yield_percentage: yield_percentage,
+          sync_status: 'SYNCED'
         }
       });
 
@@ -127,7 +129,8 @@ export async function POST(req: NextRequest) {
           organ_weight: parsedData.waste.organ_weight,
           waste_weight: parsedData.waste.waste_weight,
           notes: parsedData.waste.notes,
-          total_waste: total_waste
+          total_waste: total_waste,
+          sync_status: 'SYNCED'
         }
       });
 
@@ -164,7 +167,8 @@ export async function POST(req: NextRequest) {
                 unit: item.unit,
                 cost_basis: item.cost_basis,
                 source_slaughter_id: slaughter.id,
-                deleted_at: null
+                deleted_at: null,
+                sync_status: 'SYNCED'
               }
             });
           } else {
@@ -176,7 +180,8 @@ export async function POST(req: NextRequest) {
                 quantity: item.quantity,
                 unit: item.unit,
                 cost_basis: item.cost_basis,
-                source_slaughter_id: slaughter.id
+                source_slaughter_id: slaughter.id,
+                sync_status: 'SYNCED'
               }
             });
           }
