@@ -28,7 +28,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
       let serverData = null;
       if (navigator.onLine) {
         try {
-          const res = await fetch(`/api/customers/${id}/ledger?t=${Date.now()}`);
+          const res = await fetch(`/api/customers/${id}/ledger`);
           if (res.ok) {
             const json = await res.json();
             serverData = json.data;

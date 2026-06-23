@@ -6,32 +6,24 @@ export const utilityMeterRepository = {
     if (typeof window === 'undefined') return [];
 
     let onlineData: any[] = [];
-    try {
-        const res = await fetch(`/api/utility-meters`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+    if (navigator.onLine) {
+      try {
+        const res = await fetch("/api/utility-meters");
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-      console.warn('Online fetch failed, falling back to local DB', err);
+        console.warn('Online fetch failed, falling back to local DB', err);
+      }
     }
 
     let pendingOffline: any[] = [];
     if (db) {
-      const offlineRecords = await db.offline_utility_meters.orderBy('created_at').reverse().toArray();
-      pendingOffline = offlineRecords
-        .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
-        .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
-
-      if (pendingOffline.length > 0) {
-        const { roomRepository } = await import('./roomRepository');
-        const rooms = await roomRepository.getAll();
-        
-        pendingOffline = pendingOffline.map(m => ({
-          ...m,
-          room: m.room_id ? rooms.find(r => r.id === m.room_id) : undefined
-        }));
-      }
+      const offlineMeters = await db.offline_utility_meters.orderBy('created_at').reverse().toArray();
+      pendingOffline = offlineMeters
+        .filter((r: any) => r.sync_status === 'PENDING' || r.sync_status === 'FAILED')
+        .map((r: any) => ({ ...r.payload, id: r.local_id, isOffline: true, sync_status: r.sync_status }));
     }
 
     const localIds = new Set(pendingOffline.map(r => r.id));

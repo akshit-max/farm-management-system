@@ -6,14 +6,16 @@ export const waterUsageRepository = {
     if (typeof window === 'undefined') return [];
     
     let onlineData: any[] = [];
-    try {
-        const res = await fetch(`/api/water-usage`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+    if (navigator.onLine) {
+      try {
+        const res = await fetch("/api/water-usage");
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-      console.warn('Online fetch failed, falling back to local DB', err);
+        console.warn('Online fetch failed, falling back to local DB', err);
+      }
     }
     
     let pendingOffline: any[] = [];
@@ -25,16 +27,6 @@ export const waterUsageRepository = {
       pendingOffline = offlineRecords
         .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
         .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
-
-      if (pendingOffline.length > 0) {
-        const { roomRepository } = await import('./roomRepository');
-        const rooms = await roomRepository.getAll();
-        
-        pendingOffline = pendingOffline.map(w => ({
-          ...w,
-          room: w.room_id ? rooms.find(r => r.id === w.room_id) : undefined
-        }));
-      }
 
       const syncTasks = await db.sync_queue.filter((t: any) => t.entity === 'WATER_USAGE').toArray();
       syncTasks.forEach((task: any) => {

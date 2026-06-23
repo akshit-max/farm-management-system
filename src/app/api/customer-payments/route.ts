@@ -18,6 +18,26 @@ const createPaymentSchema = z.object({
   client_request_id: z.string().optional()
 });
 
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  const farmId = session?.user?.farm_id;
+  if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const payments = await db.customerPayment.findMany({
+      where: { farm_id: farmId, deleted_at: null },
+      orderBy: { payment_date: "desc" },
+      include: {
+        customer: true,
+        invoice: true
+      }
+    });
+    return NextResponse.json({ data: payments });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch payments" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   const farmId = session?.user?.farm_id;
@@ -110,21 +130,5 @@ export async function POST(req: NextRequest) {
     }
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
     return NextResponse.json({ error: error.message || "Failed to record payment" }, { status: 400 });
-  }
-}
-
-export async function GET(req: NextRequest) {
-  const session = await auth();
-  const farmId = session?.user?.farm_id;
-  if (!session?.user?.id || !farmId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const payments = await db.customerPayment.findMany({
-      where: { farm_id: farmId, deleted_at: null },
-      orderBy: { payment_date: 'desc' }
-    });
-    return NextResponse.json({ data: payments });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch payments" }, { status: 500 });
   }
 }

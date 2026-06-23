@@ -6,14 +6,16 @@ export const electricityUsageRepository = {
     if (typeof window === 'undefined') return [];
     
     let onlineData: any[] = [];
-    try {
-        const res = await fetch(`/api/electricity-usage`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+    if (navigator.onLine) {
+      try {
+        const res = await fetch("/api/electricity-usage");
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-      console.warn('Online fetch failed, falling back to local DB', err);
+        console.warn('Online fetch failed, falling back to local DB', err);
+      }
     }
     
     let pendingOffline: any[] = [];
@@ -25,22 +27,6 @@ export const electricityUsageRepository = {
       pendingOffline = offlineRecords
         .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
         .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
-
-      if (pendingOffline.length > 0) {
-        const { utilityMeterRepository } = await import('./utilityMeterRepository');
-        const { roomRepository } = await import('./roomRepository');
-        
-        const [meters, rooms] = await Promise.all([
-          utilityMeterRepository.getAll(),
-          roomRepository.getAll()
-        ]);
-        
-        pendingOffline = pendingOffline.map(u => ({
-          ...u,
-          meter: meters.find(m => m.id === u.meter_id),
-          room: u.room_id ? rooms.find(r => r.id === u.room_id) : undefined
-        }));
-      }
 
       const syncTasks = await db.sync_queue.filter((t: any) => t.entity === 'ELECTRICITY_USAGE').toArray();
       syncTasks.forEach((task: any) => {

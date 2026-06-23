@@ -1,45 +1,45 @@
 import { db } from '../db';
 import { v4 as uuidv4 } from 'uuid';
+import { animalCategoryRepository } from './animalCategoryRepository';
+import { roomRepository } from './roomRepository';
+import { stageRepository } from './stageRepository';
 
 export const animalBatchRepository = {
   getAll: async (roomId?: string) => {
     if (typeof window === 'undefined') return [];
 
     let onlineData: any[] = [];
-    try {
+    if (navigator.onLine) {
+      try {
         const url = roomId ? `/api/animal-batches?roomId=${roomId}` : `/api/animal-batches`;
-        const res = await fetch(url, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+        const res = await fetch(url);
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-      console.warn('Online fetch failed, falling back to local DB', err);
+        console.warn('Online fetch failed, falling back to local DB', err);
+      }
     }
 
     let pendingOffline: any[] = [];
     if (db) {
       const offlineBatches = await db.offline_animal_batches.orderBy('created_at').reverse().toArray();
-      pendingOffline = offlineBatches
+      const rawPending = offlineBatches
         .filter((b: any) => (b.sync_status === 'PENDING' || b.sync_status === 'FAILED') && (!roomId || b.payload.room_id === roomId))
         .map((b: any) => ({ ...b.payload, id: b.local_id, isOffline: true, sync_status: b.sync_status }));
 
-      if (pendingOffline.length > 0) {
-        const { animalCategoryRepository } = await import('./animalCategoryRepository');
-        const { roomRepository } = await import('./roomRepository');
-        const { stageRepository } = await import('./stageRepository');
-        
+      if (rawPending.length > 0) {
         const [categories, rooms, stages] = await Promise.all([
           animalCategoryRepository.getAll(),
           roomRepository.getAll(),
           stageRepository.getAll()
         ]);
-        
-        pendingOffline = pendingOffline.map(b => ({
+        pendingOffline = rawPending.map((b: any) => ({
           ...b,
-          animal_category: categories.find(c => c.id === b.category_id),
-          room: rooms.find(r => r.id === b.room_id),
-          current_stage: stages.find(s => s.id === b.current_stage_id)
+          animal_category: categories.find((c: any) => c.id === b.category_id) || null,
+          room: rooms.find((r: any) => r.id === b.room_id) || null,
+          current_stage: stages.find((s: any) => s.id === b.current_stage_id) || null,
         }));
       }
     }
@@ -59,35 +59,30 @@ export const animalBatchRepository = {
     if (db) {
       const offlineBatch = await db.offline_animal_batches.get(id);
       if (offlineBatch) {
-        const batch = { ...offlineBatch.payload, id: offlineBatch.local_id, isOffline: true, sync_status: offlineBatch.sync_status };
-        
-        const { animalCategoryRepository } = await import('./animalCategoryRepository');
-        const { roomRepository } = await import('./roomRepository');
-        const { stageRepository } = await import('./stageRepository');
-        
+        const payload = { ...offlineBatch.payload, id: offlineBatch.local_id, isOffline: true, sync_status: offlineBatch.sync_status };
         const [categories, rooms, stages] = await Promise.all([
           animalCategoryRepository.getAll(),
           roomRepository.getAll(),
           stageRepository.getAll()
         ]);
-        
-        batch.animal_category = categories.find((c: any) => c.id === batch.category_id);
-        batch.room = rooms.find((r: any) => r.id === batch.room_id);
-        batch.current_stage = stages.find((s: any) => s.id === batch.current_stage_id);
-        
-        return batch;
+        payload.animal_category = categories.find((c: any) => c.id === payload.category_id) || null;
+        payload.room = rooms.find((r: any) => r.id === payload.room_id) || null;
+        payload.current_stage = stages.find((s: any) => s.id === payload.current_stage_id) || null;
+        return payload;
       }
     }
 
-    try {
-        const res = await fetch(`/api/animal-batches/${id}`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`/api/animal-batches/${id}`);
         if (res.ok) {
           const json = await res.json();
           // API returns batch directly, not { data: batch }
           return json || null;
         }
       } catch (err) {
-      console.warn('Online fetch failed', err);
+        console.warn('Online fetch failed', err);
+      }
     }
     return null;
   },

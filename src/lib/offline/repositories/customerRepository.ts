@@ -6,14 +6,16 @@ export const customerRepository = {
     if (typeof window === 'undefined') return [];
 
     let onlineData: any[] = [];
-    try {
-        const res = await fetch(`/api/customers`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+    if (navigator.onLine) {
+      try {
+        const res = await fetch("/api/customers");
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-      console.warn('Online fetch failed, falling back to local DB', err);
+        console.warn('Online fetch failed, falling back to local DB', err);
+      }
     }
 
     let pendingOffline: any[] = [];
