@@ -42,18 +42,12 @@ export function InventoryForm({ initialData, onSuccess, onCancel }: { initialDat
 
   const onSubmit = async (data: any) => {
     try {
-      const url = initialData ? `/api/inventory-items/${initialData.id}` : `/api/inventory-items`;
-      const method = initialData ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to save inventory item");
+      const { inventoryRepository } = await import("@/lib/offline/repositories/inventoryRepository");
+      
+      if (initialData) {
+        await inventoryRepository.update(initialData.id, data);
+      } else {
+        await inventoryRepository.create(data);
       }
 
       toast.success(`Inventory item ${initialData ? "updated" : "created"} successfully`);

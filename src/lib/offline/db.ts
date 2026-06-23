@@ -105,6 +105,14 @@ export interface OfflineRoom {
   updated_at: Date;
 }
 
+export interface OfflineInventoryItem {
+  local_id: string;
+  payload: any;
+  sync_status: 'PENDING' | 'SYNCED' | 'FAILED';
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface OfflineUtilityMeter {
   local_id: string;
   payload: any;
@@ -123,12 +131,13 @@ export class FarmOfflineDB extends Dexie {
   offline_electricity_usages!: Table<OfflineElectricityUsage>;
   offline_customers!: Table<OfflineCustomer>;
   offline_suppliers!: Table<OfflineSupplier>;
-  offline_animal_categories!: Table<OfflineAnimalCategory>;
-  offline_stage_definitions!: Table<OfflineStageDefinition>;
-  offline_rooms!: Table<OfflineRoom>;
-  offline_utility_meters!: Table<OfflineUtilityMeter>;
-  offline_animal_batches!: Table<any>;
-  sync_queue!: Table<SyncQueueTask>;
+  offline_animal_categories!: Table<OfflineAnimalCategory, string>;
+  offline_stage_definitions!: Table<OfflineStageDefinition, string>;
+  offline_rooms!: Table<OfflineRoom, string>;
+  offline_utility_meters!: Table<OfflineUtilityMeter, string>;
+  offline_animal_batches!: Table<any, string>;
+  offline_inventory_items!: Table<OfflineInventoryItem, string>;
+  sync_queue!: Table<SyncQueueTask, string>;
 
   constructor() {
     super('FarmOfflineDB');
@@ -275,6 +284,24 @@ export class FarmOfflineDB extends Dexie {
       offline_rooms: 'local_id, sync_status, created_at',
       offline_utility_meters: 'local_id, sync_status, created_at',
       offline_animal_batches: 'local_id, sync_status, created_at',
+      sync_queue: 'id, entity, status, created_at'
+    });
+    this.version(15).stores({
+      offline_expenses: 'local_id, sync_status, created_at',
+      offline_sales: 'local_id, sync_status, created_at',
+      offline_customer_payments: 'local_id, sync_status, created_at',
+      offline_mortalities: 'local_id, sync_status, created_at',
+      offline_feed_consumptions: 'local_id, sync_status, created_at',
+      offline_water_usages: 'local_id, sync_status, created_at',
+      offline_electricity_usages: 'local_id, sync_status, created_at',
+      offline_customers: 'local_id, sync_status, created_at',
+      offline_suppliers: 'local_id, sync_status, created_at',
+      offline_animal_categories: 'local_id, sync_status, created_at',
+      offline_stage_definitions: 'local_id, sync_status, created_at',
+      offline_rooms: 'local_id, sync_status, created_at',
+      offline_utility_meters: 'local_id, sync_status, created_at',
+      offline_animal_batches: 'local_id, sync_status, created_at',
+      offline_inventory_items: 'local_id, sync_status, created_at',
       sync_queue: 'id, entity, status, created_at'
     });
   }

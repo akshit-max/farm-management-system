@@ -10,7 +10,7 @@ import { useRBAC } from "@/lib/rbac-client";
 
 export default function InventoryPage() {
   const { canMutate } = useRBAC();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
@@ -18,10 +18,9 @@ export default function InventoryPage() {
   const fetchItems = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/inventory-items");
-      if (!res.ok) throw new Error("Failed to fetch inventory");
-      const data = await res.json();
-      setItems(data.data || []);
+      const { inventoryRepository } = await import("@/lib/offline/repositories/inventoryRepository");
+      const allItems = await inventoryRepository.getAll();
+      setItems(allItems);
     } catch (error) {
       toast.error("Failed to load inventory items");
     } finally {

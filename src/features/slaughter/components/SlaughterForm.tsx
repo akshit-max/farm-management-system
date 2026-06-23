@@ -63,12 +63,9 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
       animalBatchRepository.getAll().then(data => setBatches(data || []));
     });
 
-    if (navigator.onLine) {
-      fetch("/api/inventory-items")
-        .then(res => res.json())
-        .then(data => setExistingItems(data.data || []))
-        .catch(() => console.error("Failed to load inventory items"));
-    }
+    import("@/lib/offline/repositories/inventoryRepository").then(({ inventoryRepository }) => {
+      inventoryRepository.getAll().then(data => setExistingItems(data || []));
+    });
   }, []);
 
   const onSubmit = async (data: any) => {

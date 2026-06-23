@@ -27,9 +27,9 @@ export function FeedTypeForm({ onSuccess, initialData, onCancel }: { onSuccess: 
   });
 
   useEffect(() => {
-    fetch(`/api/suppliers`)
-      .then(res => res.json())
-      .then(data => setSuppliers(data.data || []));
+    import("@/lib/offline/repositories/supplierRepository").then(({ supplierRepository }) => {
+      supplierRepository.getAll().then(all => setSuppliers(all));
+    });
   }, []);
 
   useEffect(() => {

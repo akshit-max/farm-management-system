@@ -19,8 +19,8 @@ export function InventoryTable({ data, onEdit, onRefresh, canMutate }: { data: a
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/inventory-items/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      const { inventoryRepository } = await import("@/lib/offline/repositories/inventoryRepository");
+      await inventoryRepository.delete(deleteId);
       toast.success("Item deleted successfully");
       onRefresh();
     } catch (err: any) {
