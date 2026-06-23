@@ -5,6 +5,9 @@ import { DashboardShell } from "@/features/shared/components/DashboardShell";
 import ExpensesPage from "@/app/dashboard/expenses/page";
 import CustomerLedgerPage from "@/app/dashboard/customers/[id]/page";
 import BatchDetailPage from "@/app/dashboard/animal-batches/[id]/page";
+import SuppliersPage from "@/app/dashboard/suppliers/page";
+import CustomersPage from "@/app/dashboard/customers/page";
+import FeedTypesPage from "@/app/dashboard/feed-types/page";
 
 export default function OfflineFallback() {
   const [currentPath, setCurrentPath] = useState("");
@@ -18,6 +21,18 @@ export default function OfflineFallback() {
   const renderContent = () => {
     if (currentPath.includes("/dashboard/expenses")) {
       return <ExpensesPage />;
+    }
+    
+    if (currentPath === "/dashboard/suppliers" || currentPath === "/dashboard/suppliers/") {
+      return <SuppliersPage />;
+    }
+    
+    if (currentPath === "/dashboard/customers" || currentPath === "/dashboard/customers/") {
+      return <CustomersPage />;
+    }
+    
+    if (currentPath === "/dashboard/feed-types" || currentPath === "/dashboard/feed-types/") {
+      return <FeedTypesPage />;
     }
     
     if (currentPath.startsWith("/dashboard/customers/")) {

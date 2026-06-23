@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const parsedData = createInventorySchema.parse(body);
 
     if (parsedData.client_request_id) {
-      const existingReq = await db.inventoryItem.findUnique({
+      const existingReq = await db.inventoryItem.findFirst({
         where: { client_request_id: parsedData.client_request_id }
       });
       if (existingReq) return NextResponse.json(existingReq, { status: 200 });
