@@ -24,10 +24,23 @@ export function PaymentForm({ customerId, onSuccess, onCancel }: { customerId: s
   const [invoices, setInvoices] = useState<any[]>([]);
 
   useEffect(() => {
-    import("@/lib/offline/repositories/salesRepository").then(({ salesRepository }) => {
-      salesRepository.getAll().then(all => {
-        setInvoices(all.filter((inv: any) => inv.customer_id === customerId));
+    Promise.all([
+      import("@/lib/offline/repositories/salesRepository").then(m => m.salesRepository.getAll()),
+      import("@/lib/offline/repositories/customerPaymentRepository").then(m => m.customerPaymentRepository.getAll())
+    ]).then(([allSales, allPayments]) => {
+      const customerSales = allSales.filter((inv: any) => inv.customer_id === customerId);
+      const customerPayments = allPayments.filter((p: any) => p.customer_id === customerId);
+      
+      const salesWithPayments = customerSales.map(inv => {
+        // Merge server payments with offline payments for accurate outstanding calc
+        const existingPayments = inv.payments || [];
+        const offlinePaymentsForInv = customerPayments.filter(p => p.invoice_id === inv.id && !existingPayments.find((ep: any) => ep.id === p.id));
+        return {
+          ...inv,
+          payments: [...existingPayments, ...offlinePaymentsForInv]
+        };
       });
+      setInvoices(salesWithPayments);
     });
   }, [customerId]);
 
@@ -49,8 +62,8 @@ export function PaymentForm({ customerId, onSuccess, onCancel }: { customerId: s
   useEffect(() => {
     if (selectedInvoice) {
       // Calculate outstanding
-      const paid = selectedInvoice.payments ? selectedInvoice.payments.reduce((acc: number, p: any) => acc + p.amount, 0) : 0;
-      const invTotal = selectedInvoice.total !== undefined ? selectedInvoice.total : (selectedInvoice.items ? selectedInvoice.items.reduce((s: number, i: any) => s + ((Number(i.quantity)||0)*(Number(i.unit_price)||0)), 0) : 0);
+      const paid = (selectedInvoice?.payments ?? []).reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
+      const invTotal = selectedInvoice.total !== undefined ? selectedInvoice.total : ((selectedInvoice?.items ?? []).reduce((s: number, i: any) => s + ((Number(i.quantity)||0)*(Number(i.unit_price)||0)), 0));
       const outstanding = invTotal - paid;
       if (outstanding > 0) {
         setValue("amount", outstanding);
@@ -88,8 +101,8 @@ export function PaymentForm({ customerId, onSuccess, onCancel }: { customerId: s
             >
               <option value="">-- Select Pending Invoice --</option>
               {pendingInvoices.map(inv => {
-                const paid = inv.payments ? inv.payments.reduce((acc: number, p: any) => acc + p.amount, 0) : 0;
-                const invTotal = inv.total !== undefined ? inv.total : (inv.items ? inv.items.reduce((s: number, i: any) => s + ((Number(i.quantity)||0)*(Number(i.unit_price)||0)), 0) : 0);
+                const paid = (inv?.payments ?? []).reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
+                const invTotal = inv.total !== undefined ? inv.total : ((inv?.items ?? []).reduce((s: number, i: any) => s + ((Number(i.quantity)||0)*(Number(i.unit_price)||0)), 0));
                 const outstanding = invTotal - paid;
                 return (
                   <option key={inv.id} value={inv.id}>

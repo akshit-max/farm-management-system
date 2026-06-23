@@ -220,14 +220,14 @@ export default function BatchDetailsPage() {
           <div className="bg-white p-6 rounded-xl border shadow-sm">
             <h3 className="font-medium mb-3">Mortality History</h3>
             <div className="space-y-3 max-h-64 overflow-y-auto">
-              {[...offlineMortalityList, ...(batch.mortalities || [])].map((m: any) => (
+              {[...offlineMortalityList, ...(batch?.mortalities ?? [])].map((m: any) => (
                 <div key={m.id} className="text-sm border-b pb-2">
                   <span className="font-bold text-red-600">-{m.quantity}</span> on {m.date ? format(new Date(m.date), "MMM d, yyyy") : "-"}
                   {m.isOffline && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase">Pending Sync</span>}
                   <p className="text-gray-500">{m.cause || "No cause specified"}</p>
                 </div>
               ))}
-              {batch.mortalities?.length === 0 && offlineMortalityList.length === 0 && <p className="text-sm text-gray-500">No mortality recorded.</p>}
+              {(batch?.mortalities ?? []).length === 0 && offlineMortalityList.length === 0 && <p className="text-sm text-gray-500">No mortality recorded.</p>}
             </div>
           </div>
         </div>
@@ -273,7 +273,7 @@ export default function BatchDetailsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {batch.vaccinations?.map((v: any) => (
+                  {(batch?.vaccinations ?? []).map((v: any) => (
                     <tr key={v.id}>
                       <td className="py-2">{v.vaccine_name}</td>
                       <td>{v.due_date ? format(new Date(v.due_date), "MMM d, yyyy") : "-"}</td>
@@ -293,7 +293,7 @@ export default function BatchDetailsPage() {
                       </td>
                     </tr>
                   ))}
-                  {batch.vaccinations?.length === 0 && (
+                  {(batch?.vaccinations ?? []).length === 0 && (
                     <tr><td colSpan={4} className="py-4 text-center text-gray-500">No vaccinations scheduled.</td></tr>
                   )}
                 </tbody>
