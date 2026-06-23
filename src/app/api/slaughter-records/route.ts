@@ -7,6 +7,7 @@ import { isManager } from "@/lib/rbac";
 import { z } from "zod";
 
 const createSlaughterSchema = z.object({
+  client_request_id: z.string().optional(),
   batch_id: z.string().min(1, "Batch is required"),
   slaughter_date: z.string().or(z.date()).transform(d => new Date(d)),
   quantity_slaughtered: z.coerce.number().min(1, "Must slaughter at least 1 animal"),
@@ -73,6 +74,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usable meat weight cannot exceed carcass weight" }, { status: 400 });
     }
 
+    if (parsedData.client_request_id) {
+      const existingReq = await db.slaughterRecord.findFirst({
+        where: { client_request_id: parsedData.client_request_id, farm_id: farmId }
+      });
+      if (existingReq) return NextResponse.json(existingReq, { status: 200 });
+    }
+
     // 1. Validate Batch
     const batch = await db.animalBatch.findFirst({
       where: { id: parsedData.batch_id, farm_id: farmId, deleted_at: null }
@@ -88,11 +96,15 @@ export async function POST(req: NextRequest) {
     const total_waste = parsedData.waste.bones_weight + parsedData.waste.fat_weight + parsedData.waste.organ_weight + parsedData.waste.waste_weight;
 
     // 2. Transaction
+    const newQuantity = batch.quantity - parsedData.quantity_slaughtered;
     const result = await db.$transaction(async (tx) => {
       // Deduct batch quantity
       await tx.animalBatch.update({
         where: { id: batch.id },
-        data: { quantity: { decrement: parsedData.quantity_slaughtered } }
+        data: { 
+          quantity: { decrement: parsedData.quantity_slaughtered },
+          status: newQuantity === 0 ? "SLAUGHTERED" : undefined
+        }
       });
 
       // Create Slaughter Record
@@ -105,7 +117,8 @@ export async function POST(req: NextRequest) {
           average_live_weight: parsedData.average_live_weight,
           total_live_weight: total_live_weight,
           notes: parsedData.notes,
-          sync_status: 'SYNCED'
+          sync_status: 'SYNCED',
+          client_request_id: parsedData.client_request_id
         }
       });
 

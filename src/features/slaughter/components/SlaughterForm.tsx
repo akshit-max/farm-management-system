@@ -3,7 +3,8 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "sonner";
@@ -43,6 +44,7 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
   const [existingItems, setExistingItems] = useState<any[]>([]);
   const [customModes, setCustomModes] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const requestId = useRef(uuidv4());
 
   const { register, control, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
@@ -76,13 +78,14 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
     
     try {
       const url = "/api/slaughter-records";
+      const payload = { ...data, client_request_id: requestId.current };
       console.log("URL:", url);
-      console.log("Payload:", data);
+      console.log("Payload:", payload);
 
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
