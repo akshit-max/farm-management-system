@@ -29,7 +29,7 @@ const vaccinationSchema = z.object({
 
 export default function BatchDetailsPage() {
   const params = useParams();
-  const id = params?.id as string;
+  const id = (params?.id as string) || (typeof window !== 'undefined' ? window.location.pathname.split('/').filter(Boolean).pop() : undefined) as string;
   const [batch, setBatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mortalityAdjustments, setMortalityAdjustments] = useState({ pending: 0, deleted: 0, updatedDelta: 0 });

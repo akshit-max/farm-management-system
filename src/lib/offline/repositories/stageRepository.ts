@@ -8,7 +8,7 @@ export const stageRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch("/api/stages");
+        const res = await fetch(`/api/stages?t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
@@ -22,8 +22,18 @@ export const stageRepository = {
     if (db) {
       const offlineStages = await db.offline_stage_definitions.orderBy('created_at').reverse().toArray();
       pendingOffline = offlineStages
-        .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
-        .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
+        .filter((r: any) => r.sync_status === 'PENDING' || r.sync_status === 'FAILED')
+        .map((r: any) => ({ ...r.payload, id: r.local_id, isOffline: true, sync_status: r.sync_status }));
+
+      if (pendingOffline.length > 0) {
+        const { animalCategoryRepository } = await import('./animalCategoryRepository');
+        const categories = await animalCategoryRepository.getAll();
+        
+        pendingOffline = pendingOffline.map(s => ({
+          ...s,
+          animal_category: categories.find(c => c.id === s.category_id)
+        }));
+      }
     }
 
     // Filter out from onlineData any stages that have been locally modified/deleted

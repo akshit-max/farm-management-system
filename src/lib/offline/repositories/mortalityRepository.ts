@@ -8,7 +8,7 @@ export const mortalityRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch("/api/mortalities");
+        const res = await fetch(`/api/mortalities?t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];

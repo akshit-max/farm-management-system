@@ -8,7 +8,7 @@ export const roomRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch("/api/rooms");
+        const res = await fetch(`/api/rooms?t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];

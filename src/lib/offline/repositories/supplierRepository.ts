@@ -8,7 +8,7 @@ export const supplierRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch("/api/suppliers");
+        const res = await fetch(`/api/suppliers?t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];

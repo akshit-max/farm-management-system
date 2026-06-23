@@ -8,7 +8,7 @@ export const waterUsageRepository = {
     let onlineData: any[] = [];
     if (navigator.onLine) {
       try {
-        const res = await fetch("/api/water-usage");
+        const res = await fetch(`/api/water-usage?t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
@@ -27,6 +27,16 @@ export const waterUsageRepository = {
       pendingOffline = offlineRecords
         .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
         .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
+
+      if (pendingOffline.length > 0) {
+        const { roomRepository } = await import('./roomRepository');
+        const rooms = await roomRepository.getAll();
+        
+        pendingOffline = pendingOffline.map(w => ({
+          ...w,
+          room: w.room_id ? rooms.find(r => r.id === w.room_id) : undefined
+        }));
+      }
 
       const syncTasks = await db.sync_queue.filter((t: any) => t.entity === 'WATER_USAGE').toArray();
       syncTasks.forEach((task: any) => {

@@ -189,17 +189,37 @@ export function BatchForm({ onSuccess, initialData, onCancel }: { onSuccess: () 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Quantity <span className="text-red-500">*</span>
-            {roomCapacity && <span className="ml-2 text-gray-400 text-xs font-normal">Room max: {roomCapacity}</span>}
+            {!initialData && roomCapacity && <span className="ml-2 text-gray-400 text-xs font-normal">Room max: {roomCapacity}</span>}
           </label>
-          <input
-            type="number"
-            min={1}
-            max={roomCapacity ?? undefined}
-            {...register("quantity")}
-            className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${quantityExceedsCapacity ? "border-red-400 bg-red-50" : ""}`}
-          />
+          <div className="relative">
+            <input
+              type="number"
+              min={1}
+              max={roomCapacity ?? undefined}
+              {...register("quantity")}
+              disabled={!!initialData}
+              title={initialData ? "Initial batch quantity cannot be edited to preserve traceability. Use Mortality or Sales to adjust inventory." : undefined}
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors ${
+                initialData 
+                  ? "bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed" 
+                  : quantityExceedsCapacity 
+                    ? "border-red-400 bg-red-50" 
+                    : "bg-white"
+              }`}
+            />
+            {initialData && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <span className="text-xs font-medium text-gray-400 italic bg-gray-100 pl-2">Locked</span>
+              </div>
+            )}
+          </div>
           {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity.message as string}</p>}
-          {quantityExceedsCapacity && <p className="text-red-500 text-xs mt-1">Exceeds room capacity of {roomCapacity}</p>}
+          {!initialData && quantityExceedsCapacity && <p className="text-red-500 text-xs mt-1">Exceeds room capacity of {roomCapacity}</p>}
+          {initialData && (
+            <p className="text-[11px] text-amber-600/90 mt-1.5 leading-tight">
+              To maintain traceability, initial quantity cannot be modified. Use <strong className="font-semibold">Mortality</strong> or <strong className="font-semibold">Sales</strong> to adjust live inventory.
+            </p>
+          )}
         </div>
 
         <div>

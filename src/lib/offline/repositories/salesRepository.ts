@@ -67,6 +67,16 @@ export const salesRepository = {
       pendingOffline = offlineSales
         .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
         .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
+        
+      if (pendingOffline.length > 0) {
+        const { customerRepository } = await import('./customerRepository');
+        const customers = await customerRepository.getAll();
+        
+        pendingOffline = pendingOffline.map(s => ({
+          ...s,
+          customer: customers.find(c => c.id === s.customer_id)
+        }));
+      }
     }
     
     // Sort combined array by created_at or invoice_date if needed, but returning as is is fine.
@@ -79,13 +89,19 @@ export const salesRepository = {
     if (db) {
       const offlineSale = await db.offline_sales.get(id);
       if (offlineSale) {
-        return { ...offlineSale.payload, id: offlineSale.local_id, isOffline: true, sync_status: offlineSale.sync_status };
+        const sale = { ...offlineSale.payload, id: offlineSale.local_id, isOffline: true, sync_status: offlineSale.sync_status };
+        
+        const { customerRepository } = await import('./customerRepository');
+        const customers = await customerRepository.getAll();
+        sale.customer = customers.find((c: any) => c.id === sale.customer_id);
+        
+        return sale;
       }
     }
 
     if (navigator.onLine) {
       try {
-        const res = await fetch(`/api/sales/${id}`);
+        const res = await fetch(`/api/sales/${id}?t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           return json.data || null;

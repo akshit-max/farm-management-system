@@ -28,7 +28,7 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
       let serverData = null;
       if (navigator.onLine) {
         try {
-          const res = await fetch(`/api/customers/${id}/ledger`);
+          const res = await fetch(`/api/customers/${id}/ledger?t=${Date.now()}`);
           if (res.ok) {
             const json = await res.json();
             serverData = json.data;
@@ -54,14 +54,14 @@ export default function CustomerLedgerPage({ params }: { params: Promise<{ id: s
 
       const customer = serverData ? serverData.customer : localCustomer;
       
-      const mergedInvoices = serverData ? [...serverData.invoices] : [];
+      const mergedInvoices = serverData ? [...(serverData.customer?.sales_invoices || [])] : [];
       localSales.forEach(ls => {
         if (!mergedInvoices.find(si => si.id === ls.id)) {
           mergedInvoices.push({ ...ls, payments: localPayments.filter(lp => lp.invoice_id === ls.id) });
         }
       });
       
-      const mergedPayments = serverData ? [...serverData.payments] : [];
+      const mergedPayments = serverData ? [...(serverData.customer?.payments || [])] : [];
       localPayments.forEach(lp => {
         if (!mergedPayments.find(sp => sp.id === lp.id)) {
           mergedPayments.push(lp);
