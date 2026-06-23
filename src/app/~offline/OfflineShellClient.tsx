@@ -8,9 +8,11 @@ import BatchDetailPage from "@/app/dashboard/animal-batches/[id]/page";
 import SuppliersPage from "@/app/dashboard/suppliers/page";
 import CustomersPage from "@/app/dashboard/customers/page";
 import FeedTypesPage from "@/app/dashboard/feed-types/page";
+import { useRBAC } from "@/lib/rbac-client";
 
 export default function OfflineFallback() {
   const [currentPath, setCurrentPath] = useState("");
+  const { role } = useRBAC();
 
   useEffect(() => {
     // We are on the client side, get the path the user actually requested
@@ -69,7 +71,7 @@ export default function OfflineFallback() {
   };
 
   return (
-    <DashboardShell>
+    <DashboardShell userRole={role}>
       {currentPath ? renderContent() : null}
     </DashboardShell>
   );

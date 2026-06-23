@@ -7,7 +7,10 @@ export const supplierRepository = {
 
     let onlineData: any[] = [];
     try {
-        const res = await fetch(`/api/suppliers`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+        const res = await fetch(`/api/suppliers`, { 
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } 
+        });
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];

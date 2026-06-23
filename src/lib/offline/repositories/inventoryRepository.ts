@@ -23,7 +23,7 @@ export const inventoryRepository = {
       const offlineItems = await db.offline_inventory_items.orderBy('created_at').reverse().toArray();
       pendingOffline = offlineItems
         .filter((s: any) => s.sync_status === 'PENDING' || s.sync_status === 'FAILED')
-        .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status }));
+        .map((s: any) => ({ ...s.payload, id: s.local_id, isOffline: true, sync_status: s.sync_status, updated_at: s.updated_at, created_at: s.created_at }));
     }
 
     // Filter out from onlineData any items that have been locally modified/deleted

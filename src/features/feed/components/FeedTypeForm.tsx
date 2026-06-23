@@ -53,10 +53,15 @@ export function FeedTypeForm({ onSuccess, initialData, onCancel }: { onSuccess: 
       const url = initialData ? `/api/feed-types/${initialData.id}` : "/api/feed-types";
       const method = initialData ? "PUT" : "POST";
 
+      const payload = {
+        ...data,
+        supplier_id: data.supplier_id || null
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to save");

@@ -69,6 +69,11 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
   }, []);
 
   const onSubmit = async (data: any) => {
+    if (!navigator.onLine) {
+      toast.error("Slaughter module requires an internet connection.");
+      return;
+    }
+    
     try {
       const res = await fetch("/api/slaughter-records", {
         method: "POST",
