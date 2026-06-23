@@ -6,17 +6,15 @@ export const animalBatchRepository = {
     if (typeof window === 'undefined') return [];
 
     let onlineData: any[] = [];
-    if (navigator.onLine) {
-      try {
-        const url = roomId ? `/api/animal-batches?roomId=${roomId}&t=${Date.now()}` : `/api/animal-batches?t=${Date.now()}`;
-        const res = await fetch(url);
+    try {
+        const url = roomId ? `/api/animal-batches?roomId=${roomId}` : `/api/animal-batches`;
+        const res = await fetch(url, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-        console.warn('Online fetch failed, falling back to local DB', err);
-      }
+      console.warn('Online fetch failed, falling back to local DB', err);
     }
 
     let pendingOffline: any[] = [];
@@ -81,17 +79,15 @@ export const animalBatchRepository = {
       }
     }
 
-    if (navigator.onLine) {
-      try {
-        const res = await fetch(`/api/animal-batches/${id}?t=${Date.now()}`);
+    try {
+        const res = await fetch(`/api/animal-batches/${id}`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
         if (res.ok) {
           const json = await res.json();
           // API returns batch directly, not { data: batch }
           return json || null;
         }
       } catch (err) {
-        console.warn('Online fetch failed', err);
-      }
+      console.warn('Online fetch failed', err);
     }
     return null;
   },

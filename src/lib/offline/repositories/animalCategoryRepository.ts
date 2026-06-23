@@ -6,16 +6,14 @@ export const animalCategoryRepository = {
     if (typeof window === 'undefined') return [];
 
     let onlineData: any[] = [];
-    if (navigator.onLine) {
-      try {
-        const res = await fetch(`/api/animal-categories?t=${Date.now()}`);
+    try {
+        const res = await fetch(`/api/animal-categories`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-        console.warn('Online fetch failed, falling back to local DB', err);
-      }
+      console.warn('Online fetch failed, falling back to local DB', err);
     }
 
     let pendingOffline: any[] = [];

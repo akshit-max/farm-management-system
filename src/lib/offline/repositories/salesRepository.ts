@@ -49,16 +49,14 @@ export const salesRepository = {
     if (typeof window === 'undefined') return [];
     
     let onlineData: any[] = [];
-    if (navigator.onLine) {
-      try {
-        const res = await fetch(`/api/sales?showCancelled=${showCancelled}`);
+    try {
+        const res = await fetch(`/api/sales?showCancelled=${showCancelled}`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
         if (res.ok) {
           const json = await res.json();
           onlineData = json.data || [];
         }
       } catch (err) {
-        console.warn('Online fetch failed, falling back to local DB', err);
-      }
+      console.warn('Online fetch failed, falling back to local DB', err);
     }
     
     let pendingOffline: any[] = [];
@@ -99,16 +97,14 @@ export const salesRepository = {
       }
     }
 
-    if (navigator.onLine) {
-      try {
-        const res = await fetch(`/api/sales/${id}?t=${Date.now()}`);
+    try {
+        const res = await fetch(`/api/sales/${id}`, { headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
         if (res.ok) {
           const json = await res.json();
           return json.data || null;
         }
       } catch (err) {
-        console.warn('Online fetch failed', err);
-      }
+      console.warn('Online fetch failed', err);
     }
     return null;
   },
