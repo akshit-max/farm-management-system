@@ -58,6 +58,9 @@ export function FeedTypeForm({ onSuccess, initialData, onCancel }: { onSuccess: 
         supplier_id: data.supplier_id || null
       };
 
+      console.log("URL:", url);
+      console.log("Payload:", payload);
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },

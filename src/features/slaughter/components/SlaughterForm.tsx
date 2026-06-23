@@ -75,7 +75,11 @@ export function SlaughterForm({ onSuccess, onCancel }: { onSuccess: () => void; 
     }
     
     try {
-      const res = await fetch("/api/slaughter-records", {
+      const url = "/api/slaughter-records";
+      console.log("URL:", url);
+      console.log("Payload:", data);
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
