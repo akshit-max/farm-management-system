@@ -54,8 +54,27 @@ export async function POST(req: NextRequest) {
     });
     if (duplicateCheck) {
       if (parsedData.client_request_id) {
-         // Idempotent fallback if name exists but client_request_id didn't match (should be rare)
-         return NextResponse.json(duplicateCheck, { status: 200 });
+         // Safely merge offline quantities into the existing server stock using Weighted Average Cost (WAC)
+         const existingQty = duplicateCheck.quantity;
+         const existingCost = duplicateCheck.cost_basis;
+         const incomingQty = parsedData.quantity;
+         const incomingCost = parsedData.cost_basis;
+         
+         const totalQty = existingQty + incomingQty;
+         const weightedCost = totalQty > 0 
+           ? ((existingQty * existingCost) + (incomingQty * incomingCost)) / totalQty
+           : existingCost;
+
+         const mergedItem = await db.inventoryItem.update({
+           where: { id: duplicateCheck.id },
+           data: {
+             quantity: { increment: incomingQty },
+             cost_basis: weightedCost
+             // category and unit are intentionally omitted to preserve the server's truth
+           }
+         });
+         await logAudit(session.user.id, farmId, "UPDATE", "InventoryItem", duplicateCheck.id);
+         return NextResponse.json(mergedItem, { status: 200 });
       }
       return NextResponse.json({ error: "Inventory item with this name already exists" }, { status: 400 });
     }
